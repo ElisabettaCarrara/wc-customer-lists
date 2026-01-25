@@ -14,13 +14,17 @@ use WC_Customer_Lists\Lists\Event_List;
 
 final class Ajax_Handlers {
 
+    private array $settings = [];
+
     public function __construct() {
+        $this->settings = get_option( 'wc_customer_lists_settings', [] );
+
         add_action( 'wp_ajax_wccl_get_user_lists', [ $this, 'get_user_lists' ] );
         add_action( 'wp_ajax_wccl_add_product_to_list', [ $this, 'add_product_to_list' ] );
     }
 
     /**
-     * Fetch lists for the current user.
+     * Fetch lists for the current user, only enabled ones.
      */
     public function get_user_lists(): void {
         check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
@@ -31,9 +35,19 @@ final class Ajax_Handlers {
             wp_send_json_error( [ 'message' => __( 'Not logged in.', 'wc-customer-lists' ) ] );
         }
 
+        $enabled_lists = $this->settings['enabled_lists'] ?? [];
+        if ( empty( $enabled_lists ) ) {
+            wp_send_json_success( [ 'html' => '<p>' . esc_html__( 'No list types are enabled.', 'wc-customer-lists' ) . '</p>' ] );
+        }
+
         $lists = [];
 
-        foreach ( List_Registry::get_all_registered_types() as $post_type => $config ) {
+        foreach ( $enabled_lists as $post_type ) {
+            if ( ! isset( List_Registry::$list_types[ $post_type ] ) ) {
+                continue; // just in case
+            }
+
+            $config = List_Registry::$list_types[ $post_type ];
 
             $posts = get_posts( [
                 'author'      => $user_id,
@@ -44,10 +58,10 @@ final class Ajax_Handlers {
 
             foreach ( $posts as $post ) {
                 $lists[] = [
-                    'id'               => $post->ID,
-                    'title'            => get_the_title( $post ),
-                    'post_type'        => $post_type,
-                    'supports_events'  => ! empty( $config['supports_events'] ),
+                    'id'              => $post->ID,
+                    'title'           => get_the_title( $post ),
+                    'post_type'       => $post_type,
+                    'supports_events' => ! empty( $config['supports_events'] ),
                 ];
             }
         }
@@ -94,11 +108,17 @@ final class Ajax_Handlers {
         try {
             $list = List_Registry::get( $list_id );
 
+            // Only allow enabled lists
+            $enabled_lists = $this->settings['enabled_lists'] ?? [];
+            if ( ! in_array( $list->get_post_type(), $enabled_lists, true ) ) {
+                wp_send_json_error( [ 'message' => __( 'This list type is disabled.', 'wc-customer-lists' ) ] );
+            }
+
             if ( $list->get_owner_id() !== $user_id ) {
                 wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
             }
 
-            // Validate event data (whitelist)
+            // Validate event data (if applicable)
             if ( $list instanceof Event_List ) {
                 $allowed_fields = [
                     'event_name',
