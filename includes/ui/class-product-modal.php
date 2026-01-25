@@ -15,6 +15,11 @@ namespace WC_Customer_Lists\UI\Product_Modal;
 class Product_Modal {
 
     public function __construct() {
+        // Only hook if WooCommerce is active
+        if ( ! class_exists( 'WooCommerce' ) ) {
+            return;
+        }
+
         // Enqueue front-end assets
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
@@ -24,7 +29,7 @@ class Product_Modal {
         // Add button to product archives
         add_action( 'woocommerce_after_shop_loop_item', array( $this, 'render_add_to_list_button' ), 15 );
 
-        // Modal HTML (can also be hooked to wp_footer)
+        // Modal HTML
         add_action( 'wp_footer', array( $this, 'render_modal' ) );
     }
 
@@ -44,7 +49,7 @@ class Product_Modal {
         wp_enqueue_script(
             'wc-customer-lists',
             $plugin_url . 'js/wc-customer-lists.js',
-            array( 'jquery' ),
+            array(),
             '1.0.0',
             true
         );
@@ -76,7 +81,7 @@ class Product_Modal {
             return;
         }
 
-        echo '<button class="wc-customer-lists-add-btn" data-product-id="' . esc_attr( $product_id ) . '">';
+        echo '<button class="wc-customer-lists-add-btn button alt" data-product-id="' . esc_attr( $product_id ) . '">';
         echo esc_html__( 'Add to List', 'wc-customer-lists' );
         echo '</button>';
     }
@@ -86,18 +91,34 @@ class Product_Modal {
      */
     public function render_modal(): void {
         ?>
-        <dialog id="wc-customer-lists-modal" class="wc-customer-lists-modal">
-            <form method="dialog">
-                <button class="modal-close-btn" aria-label="<?php esc_attr_e( 'Close', 'wc-customer-lists' ); ?>">×</button>
-                <h2><?php esc_html_e( 'Add Product to List', 'wc-customer-lists' ); ?></h2>
+        <dialog id="wc-customer-lists-modal" class="wc-customer-lists-modal" role="dialog" aria-modal="true" aria-labelledby="wc-customer-lists-modal-title">
+            <div class="wc-customer-lists-modal-wrapper">
+                <form method="dialog" class="wc-customer-lists-modal-form">
+                    <button type="button" class="modal-close-btn" aria-label="<?php esc_attr_e( 'Close', 'wc-customer-lists' ); ?>">×</button>
+                    <h2 id="wc-customer-lists-modal-title"><?php esc_html_e( 'Add Product to List', 'wc-customer-lists' ); ?></h2>
 
-                <div class="wc-customer-lists-modal-content">
-                    <!-- Dropdown and form fields will be populated dynamically via JS -->
-                </div>
+                    <div class="wc-customer-lists-modal-content">
+                        <!-- JS will populate dropdown + event fields here -->
+                        <p class="wc-customer-lists-loading"><?php esc_html_e( 'Loading your lists...', 'wc-customer-lists' ); ?></p>
+                    </div>
 
-                <button class="modal-submit-btn"><?php esc_html_e( 'Add', 'wc-customer-lists' ); ?></button>
-            </form>
+                    <div class="wc-customer-lists-modal-actions">
+                        <button type="submit" class="modal-submit-btn button alt"><?php esc_html_e( 'Add', 'wc-customer-lists' ); ?></button>
+                    </div>
+                </form>
+            </div>
+            <div class="wc-customer-lists-modal-overlay"></div>
         </dialog>
+        <script>
+        // Optional: allow clicking outside modal to close
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('wc-customer-lists-modal');
+            const overlay = modal.querySelector('.wc-customer-lists-modal-overlay');
+            overlay.addEventListener('click', function() {
+                if (modal.open) modal.close();
+            });
+        });
+        </script>
         <?php
     }
 }
