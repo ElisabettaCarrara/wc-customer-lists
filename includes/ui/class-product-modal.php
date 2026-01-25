@@ -87,38 +87,61 @@ class Product_Modal {
     }
 
     /**
-     * Render modal container (HTML)
-     */
-    public function render_modal(): void {
-        ?>
-        <dialog id="wc-customer-lists-modal" class="wc-customer-lists-modal" role="dialog" aria-modal="true" aria-labelledby="wc-customer-lists-modal-title">
-            <div class="wc-customer-lists-modal-wrapper">
-                <form method="dialog" class="wc-customer-lists-modal-form">
-                    <button type="button" class="modal-close-btn" aria-label="<?php esc_attr_e( 'Close', 'wc-customer-lists' ); ?>">×</button>
-                    <h2 id="wc-customer-lists-modal-title"><?php esc_html_e( 'Add Product to List', 'wc-customer-lists' ); ?></h2>
+ * Render modal container (HTML)
+ */
+public function render_modal(): void {
+    ?>
+    <dialog id="wc-customer-lists-modal" 
+            class="wc-customer-lists-modal" 
+            role="dialog" 
+            aria-modal="true" 
+            aria-labelledby="wc-customer-lists-modal-title">
+        
+        <div class="wc-customer-lists-modal-wrapper">
 
-                    <div class="wc-customer-lists-modal-content">
-                        <!-- JS will populate dropdown + event fields here -->
-                        <p class="wc-customer-lists-loading"><?php esc_html_e( 'Loading your lists...', 'wc-customer-lists' ); ?></p>
-                    </div>
+            <form method="dialog" class="wc-customer-lists-modal-form">
+                
+                <!-- Close button -->
+                <button type="button" class="modal-close-btn" 
+                        aria-label="<?php esc_attr_e( 'Close', 'wc-customer-lists' ); ?>">×</button>
 
-                    <div class="wc-customer-lists-modal-actions">
-                        <button type="submit" class="modal-submit-btn button alt"><?php esc_html_e( 'Add', 'wc-customer-lists' ); ?></button>
-                    </div>
-                </form>
-            </div>
-            <div class="wc-customer-lists-modal-overlay"></div>
-        </dialog>
-        <script>
-        // Optional: allow clicking outside modal to close
-        document.addEventListener('DOMContentLoaded', function() {
-            const modal = document.getElementById('wc-customer-lists-modal');
-            const overlay = modal.querySelector('.wc-customer-lists-modal-overlay');
-            overlay.addEventListener('click', function() {
-                if (modal.open) modal.close();
-            });
+                <!-- Modal title -->
+                <h2 id="wc-customer-lists-modal-title">
+                    <?php esc_html_e( 'Add Product to List', 'wc-customer-lists' ); ?>
+                </h2>
+
+                <!-- Content container (dropdown + event fields injected by JS) -->
+                <div class="wc-customer-lists-modal-content">
+                    <p class="wc-customer-lists-loading">
+                        <?php esc_html_e( 'Loading your lists...', 'wc-customer-lists' ); ?>
+                    </p>
+                    <div id="wc_event_fields_container"></div>
+                </div>
+
+                <!-- Actions -->
+                <div class="wc-customer-lists-modal-actions">
+                    <button type="submit" class="modal-submit-btn button alt">
+                        <?php esc_html_e( 'Add', 'wc-customer-lists' ); ?>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Overlay to allow closing by clicking outside -->
+        <div class="wc-customer-lists-modal-overlay"></div>
+    </dialog>
+
+    <script>
+    // Optional: allow clicking overlay to close modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('wc-customer-lists-modal');
+        const overlay = modal.querySelector('.wc-customer-lists-modal-overlay');
+
+        overlay.addEventListener('click', function() {
+            if (modal.open) modal.close();
         });
-        </script>
-        <?php
-    }
+    });
+    </script>
+    <?php
 }
