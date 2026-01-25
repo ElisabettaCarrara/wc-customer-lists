@@ -3,7 +3,8 @@
  * List Registry & Factory.
  *
  * Responsible for registering list types, CPTs,
- * providing capability flags, and instantiating the correct list objects.
+ * providing capability flags, and instantiating the correct list objects,
+ * now fully respecting admin settings for enabled lists and per-type limits.
  *
  * @package WC_Customer_Lists
  */
@@ -24,53 +25,53 @@ class List_Registry {
 	 * - class (required)
 	 * - supports_events (bool)
 	 * - supports_auto_cart (bool)
-	 * - max_per_user (int)
 	 *
 	 * @var array<string,array>
 	 */
 	protected static array $list_types = [
-    'wc_bridal_list' => [
-        'class'              => \WC_Customer_Lists\Lists\Bridal_List::class,
-        'supports_events'    => true,
-        'supports_auto_cart' => true,
-        'max_per_user'       => 1,
-    ],
-    'wc_baby_list' => [
-        'class'              => \WC_Customer_Lists\Lists\Baby_List::class, // <-- fixed here
-        'supports_events'    => true,
-        'supports_auto_cart' => true,
-        'max_per_user'       => 1,
-    ],
-    'wc_event_list' => [
-        'class'              => \WC_Customer_Lists\Lists\Generic_Event_List::class,
-        'supports_events'    => true,
-        'supports_auto_cart' => true,
-        'max_per_user'       => 0,
-    ],
-    'wc_wishlist' => [
-        'class'              => \WC_Customer_Lists\Lists\Wishlist::class,
-        'supports_events'    => false,
-        'supports_auto_cart' => false,
-        'max_per_user'       => 0,
-    ],
-];
+		'wc_bridal_list' => [
+			'class'              => \WC_Customer_Lists\Lists\Bridal_List::class,
+			'supports_events'    => true,
+			'supports_auto_cart' => true,
+		],
+		'wc_baby_list' => [
+			'class'              => \WC_Customer_Lists\Lists\Baby_List::class,
+			'supports_events'    => true,
+			'supports_auto_cart' => true,
+		],
+		'wc_event_list' => [
+			'class'              => \WC_Customer_Lists\Lists\Generic_Event_List::class,
+			'supports_events'    => true,
+			'supports_auto_cart' => true,
+		],
+		'wc_wishlist' => [
+			'class'              => \WC_Customer_Lists\Lists\Wishlist::class,
+			'supports_events'    => false,
+			'supports_auto_cart' => false,
+		],
+	];
 
 	/**
-	 * Register a list type.
+	 * Return all list types that are enabled in settings.
 	 *
-	 * @param string $post_type CPT slug.
-	 * @param array  $config    Configuration array (class, flags, max_per_user).
+	 * @return array<string,array>
 	 */
-	public static function register_list_type( string $post_type, array $config ): void {
-		if ( empty( $config['class'] ) || ! is_subclass_of( $config['class'], List_Engine::class ) ) {
-			throw new InvalidArgumentException( 'List class must extend List_Engine.' );
+	public static function get_enabled_list_types(): array {
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$enabled  = $settings['enabled_lists'] ?? [];
+
+		$enabled_types = [];
+		foreach ( $enabled as $post_type ) {
+			if ( isset( self::$list_types[ $post_type ] ) ) {
+				$enabled_types[ $post_type ] = self::$list_types[ $post_type ];
+			}
 		}
 
-		self::$list_types[ $post_type ] = $config;
+		return $enabled_types;
 	}
 
 	/**
-	 * Get configuration for a list type.
+	 * Get configuration for a list type (settings + registry defaults)
 	 *
 	 * @param string $post_type
 	 * @return array
@@ -80,7 +81,17 @@ class List_Registry {
 			throw new InvalidArgumentException( sprintf( 'Unknown list type "%s".', $post_type ) );
 		}
 
-		return self::$list_types[ $post_type ];
+		$config = self::$list_types[ $post_type ];
+
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$limits   = $settings['list_limits'][ $post_type ] ?? [];
+
+		// Apply settings-based limits
+		$config['max_lists']   = isset( $limits['max_lists'] ) ? (int) $limits['max_lists'] : 0;   // 0 = unlimited
+		$config['max_items']   = isset( $limits['max_items'] ) ? (int) $limits['max_items'] : 0;
+		$config['not_purchased_action'] = $limits['not_purchased_action'] ?? 'keep';
+
+		return $config;
 	}
 
 	/**
@@ -100,11 +111,11 @@ class List_Registry {
 	}
 
 	/**
-	 * Get maximum number of lists per user for this type.
+	 * Get maximum number of lists per user for this type (from settings)
 	 */
 	public static function get_max_per_user( string $post_type ): int {
 		$config = self::get_list_config( $post_type );
-		return isset( $config['max_per_user'] ) ? (int) $config['max_per_user'] : 0;
+		return $config['max_lists'] ?? 0;
 	}
 
 	/**
@@ -130,13 +141,16 @@ class List_Registry {
 	/**
 	 * Create a new list.
 	 *
+	 * Respects max_lists from settings.
+	 *
 	 * @param string $post_type List CPT slug.
 	 * @param int    $owner_id  Owner user ID.
 	 * @param string $title     List title.
 	 * @return List_Engine
 	 */
 	public static function create( string $post_type, int $owner_id, string $title ): List_Engine {
-		$max_per_user = self::get_max_per_user( $post_type );
+		$config = self::get_list_config( $post_type );
+		$max_per_user = $config['max_lists'] ?? 0;
 
 		if ( $max_per_user > 0 ) {
 			$existing = get_posts( [
