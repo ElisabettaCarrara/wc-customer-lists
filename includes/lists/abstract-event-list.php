@@ -115,4 +115,20 @@ abstract class Event_List extends List_Engine {
 	public function validate(): void {
 		// One event list per user per event type can be enforced here later.
 	}
+ public function schedule_auto_cart(): void {
+        if ( ! $this->supports_auto_cart() ) {
+            return;
+        }
+
+        $closing_timestamp = strtotime( $this->get_closing_date() . ' 23:59:59' );
+        if ( ! wp_next_scheduled( 'wc_customer_list_auto_cart', array( $this->post_id ) ) ) {
+            wp_schedule_single_event( $closing_timestamp, 'wc_customer_list_auto_cart', array( $this->post_id ) );
+        }
+    }
+
+    protected function supports_auto_cart(): bool {
+        // Pull from registry if needed
+        $config = \WC_Customer_Lists\Core\List_Registry::get_list_config( $this->get_post_type() );
+        return ! empty( $config['supports_auto_cart'] );
+    }
 }
