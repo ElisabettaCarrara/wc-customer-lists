@@ -60,17 +60,36 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Add or update a product in the list.
-	 */
-	public function set_item( int $product_id, int $quantity = 1 ): void {
-		if ( $quantity <= 0 ) {
-			$this->remove_item( $product_id );
-			return;
-		}
+ * Add or update a product in the list.
+ */
+public function set_item( int $product_id, int $quantity = 1 ): void {
+    if ( $quantity <= 0 ) {
+        $this->remove_item( $product_id );
+        return;
+    }
 
-		update_post_meta( $this->post_id, '_item_' . $product_id, $quantity );
+    // 1️⃣ Get plugin settings
+    $settings = get_option( 'wc_customer_lists_settings', [] );
+    $list_type = static::get_post_type();
+    $list_limits = $settings['list_limits'][$list_type] ?? [];
+
+    // 2️⃣ Check max items per list
+    $max_items = intval( $list_limits['max_items'] ?? 0 ); // 0 = unlimited
+    $current_count = count( $this->get_items() );
+
+    if ( $max_items > 0 && ! isset( $this->get_items()[$product_id] ) && $current_count >= $max_items ) {
+        throw new \InvalidArgumentException(
+            sprintf(
+                __( 'This list already has the maximum allowed items (%d).', 'wc-customer-lists' ),
+                $max_items
+            )
+        );
+    }
+
+    // 3️⃣ Add/update item
+    update_post_meta( $this->post_id, '_item_' . $product_id, $quantity );
 	}
-
+	
 	/**
 	 * Remove a product from the list.
 	 */
