@@ -16,32 +16,79 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Close modal
-    closeBtn.addEventListener('click', function() {
-        modal.close();
-        modalContent.innerHTML = '';
-    });
+    closeBtn.addEventListener('click', closeModal);
 
     // Close modal on ESC
     window.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.open) {
-            modal.close();
-            modalContent.innerHTML = '';
-        }
+        if (e.key === 'Escape' && modal.open) closeModal();
     });
+
+    // Close on backdrop click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    function closeModal() {
+        modal.close();
+        modalContent.innerHTML = '';
+    }
 
     // Open modal function
     function openModal() {
-        // Fetch user's lists via AJAX
         fetchUserLists(currentProductId)
             .then(html => {
                 modalContent.innerHTML = html;
                 modal.showModal();
+
+                // Attach change handler for dropdown to show event fields
+                const listDropdown = modalContent.querySelector('select[name="wc_list_id"]');
+                if (listDropdown) {
+                    listDropdown.addEventListener('change', handleListChange);
+                    handleListChange(); // trigger initially for first selected
+                }
             })
             .catch(err => {
                 modalContent.innerHTML = '<p>Error loading lists. Please try again.</p>';
                 modal.showModal();
                 console.error(err);
             });
+    }
+
+    // Handle list selection change
+    function handleListChange() {
+        const selectedList = modalContent.querySelector('select[name="wc_list_id"]');
+        const container = modalContent.querySelector('#wc_event_fields_container');
+
+        if (!selectedList || !container) return;
+
+        const supportsEvents = selectedList.selectedOptions[0].dataset.supportsEvents === '1';
+        container.innerHTML = '';
+
+        if (supportsEvents) {
+            // Dynamically add event fields (can be extended for each type)
+            const eventFields = [
+                { id: 'event_name', label: 'Event Name', type: 'text', required: true },
+                { id: 'event_date', label: 'Event Date', type: 'date', required: true },
+                { id: 'closing_date', label: 'List Closing Date', type: 'date', required: true },
+                { id: 'delivery_deadline', label: 'Delivery Deadline', type: 'date', required: true }
+            ];
+
+            eventFields.forEach(f => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'wc-event-field';
+                const label = document.createElement('label');
+                label.htmlFor = f.id;
+                label.textContent = f.label;
+                const input = document.createElement('input');
+                input.type = f.type;
+                input.id = f.id;
+                input.name = f.id;
+                input.required = f.required;
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                container.appendChild(wrapper);
+            });
+        }
     }
 
     // Submit button handler
@@ -56,11 +103,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const listId = selectedList.value;
 
-        addProductToList(currentProductId, listId)
+        // Collect event data
+        const eventData = {};
+        modalContent.querySelectorAll('#wc_event_fields_container input').forEach(input => {
+            if (input.required && !input.value) {
+                alert(`Please fill in the ${input.previousSibling.textContent} field.`);
+                return;
+            }
+            eventData[input.name] = input.value;
+        });
+
+        addProductToList(currentProductId, listId, eventData)
             .then(resp => {
                 alert(resp.data.message);
-                modal.close();
-                modalContent.innerHTML = '';
+                closeModal();
             })
             .catch(err => {
                 alert('Error adding product. Please try again.');
@@ -70,7 +126,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Fetch all lists for the current user
-     * Returns HTML for dropdown + optional event fields
      */
     function fetchUserLists(productId) {
         return fetch(WCCL_Ajax.ajax_url, {
@@ -88,11 +143,20 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Add product to selected list via AJAX
      */
-    function addProductToList(productId, listId) {
+    function addProductToList(productId, listId, eventData = {}) {
+        const params = new URLSearchParams();
+        params.append('action', 'wccl_add_product_to_list');
+        params.append('nonce', WCCL_Ajax.nonce);
+        params.append('product_id', productId);
+        params.append('list_id', listId);
+        for (const key in eventData) {
+            params.append(`event_data[${key}]`, eventData[key]);
+        }
+
         return fetch(WCCL_Ajax.ajax_url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=wccl_add_product_to_list&nonce=${WCCL_Ajax.nonce}&product_id=${productId}&list_id=${listId}`
+            body: params.toString(),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         })
         .then(res => res.json())
         .then(data => {
