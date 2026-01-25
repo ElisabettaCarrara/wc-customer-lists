@@ -29,25 +29,31 @@ class List_Registry {
 	 * @var array<string,array>
 	 */
 	protected static array $list_types = [
-		'wc_bridal_list' => [
-			'class'              => \WC_Customer_Lists\Lists\Bridal_List::class,
-			'supports_events'    => true,
-			'supports_auto_cart' => true,
-			'max_per_user'       => 1,
-		],
-		'wc_event_list' => [
-			'class'              => \WC_Customer_Lists\Lists\Generic_Event_List::class,
-			'supports_events'    => true,
-			'supports_auto_cart' => true,
-			'max_per_user'       => 0,
-		],
-		'wc_wishlist' => [
-			'class'              => \WC_Customer_Lists\Lists\Wishlist::class,
-			'supports_events'    => false,
-			'supports_auto_cart' => false,
-			'max_per_user'       => 0,
-		],
-	];
+    'wc_bridal_list' => [
+        'class'              => \WC_Customer_Lists\Lists\Bridal_List::class,
+        'supports_events'    => true,
+        'supports_auto_cart' => true,
+        'max_per_user'       => 1,
+    ],
+    'wc_baby_list' => [
+        'class'              => \WC_Customer_Lists\Lists\Baby_List::class, // <-- fixed here
+        'supports_events'    => true,
+        'supports_auto_cart' => true,
+        'max_per_user'       => 1,
+    ],
+    'wc_event_list' => [
+        'class'              => \WC_Customer_Lists\Lists\Generic_Event_List::class,
+        'supports_events'    => true,
+        'supports_auto_cart' => true,
+        'max_per_user'       => 0,
+    ],
+    'wc_wishlist' => [
+        'class'              => \WC_Customer_Lists\Lists\Wishlist::class,
+        'supports_events'    => false,
+        'supports_auto_cart' => false,
+        'max_per_user'       => 0,
+    ],
+];
 
 	/**
 	 * Register a list type.
