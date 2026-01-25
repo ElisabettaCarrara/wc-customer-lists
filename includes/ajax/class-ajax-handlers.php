@@ -91,68 +91,85 @@ final class Ajax_Handlers {
     }
 
     /**
-     * Add product to a list.
-     */
-    public function add_product_to_list(): void {
-        check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
+ * Add product to a list via AJAX.
+ */
+public function add_product_to_list(): void {
+    check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-        $user_id    = get_current_user_id();
-        $product_id = absint( $_POST['product_id'] ?? 0 );
-        $list_id    = absint( $_POST['list_id'] ?? 0 );
-        $event_data = $_POST['event_data'] ?? [];
+    $user_id    = get_current_user_id();
+    $product_id = absint( $_POST['product_id'] ?? 0 );
+    $list_id    = absint( $_POST['list_id'] ?? 0 );
+    $event_data = $_POST['event_data'] ?? [];
 
-        if ( ! $user_id || ! $product_id || ! $list_id ) {
-            wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
+    if ( ! $user_id || ! $product_id || ! $list_id ) {
+        wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
+    }
+
+    try {
+        // Get the list object
+        $list = List_Registry::get( $list_id );
+
+        // 1️⃣ Only allow enabled lists
+        $enabled_lists = $this->settings['enabled_lists'] ?? [];
+        if ( ! in_array( $list->get_post_type(), $enabled_lists, true ) ) {
+            wp_send_json_error( [ 'message' => __( 'This list type is disabled.', 'wc-customer-lists' ) ] );
         }
 
-        try {
-            $list = List_Registry::get( $list_id );
+        // 2️⃣ Ownership check
+        if ( $list->get_owner_id() !== $user_id ) {
+            wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
+        }
 
-            // Only allow enabled lists
-            $enabled_lists = $this->settings['enabled_lists'] ?? [];
-            if ( ! in_array( $list->get_post_type(), $enabled_lists, true ) ) {
-                wp_send_json_error( [ 'message' => __( 'This list type is disabled.', 'wc-customer-lists' ) ] );
-            }
+        // 3️⃣ Max items per list enforcement (from settings)
+        $list_limits = $this->settings['list_limits'][$list->get_post_type()] ?? [];
+        $max_items   = intval( $list_limits['max_items'] ?? 0 ); // 0 = unlimited
+        $current_count = count( $list->get_items() );
 
-            if ( $list->get_owner_id() !== $user_id ) {
-                wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
-            }
+        if ( $max_items > 0 && $current_count >= $max_items ) {
+            wp_send_json_error([
+                'message' => sprintf(
+                    __( 'This list already has the maximum allowed items (%d).', 'wc-customer-lists' ),
+                    $max_items
+                )
+            ]);
+        }
 
-            // Validate event data (if applicable)
-            if ( $list instanceof Event_List ) {
-                $allowed_fields = [
-                    'event_name',
-                    'event_date',
-                    'closing_date',
-                    'delivery_deadline',
-                ];
+        // 4️⃣ Validate event data (if applicable)
+        if ( $list instanceof Event_List ) {
+            $allowed_fields = [
+                'event_name',
+                'event_date',
+                'closing_date',
+                'delivery_deadline',
+            ];
 
-                foreach ( $allowed_fields as $field ) {
-                    if ( empty( $event_data[ $field ] ) ) {
-                        wp_send_json_error( [
-                            'message' => sprintf(
-                                __( 'Missing required field: %s', 'wc-customer-lists' ),
-                                esc_html( $field )
-                            ),
-                        ] );
-                    }
-
-                    update_post_meta(
-                        $list_id,
-                        '_' . $field,
-                        sanitize_text_field( $event_data[ $field ] )
-                    );
+            foreach ( $allowed_fields as $field ) {
+                if ( empty( $event_data[ $field ] ) ) {
+                    wp_send_json_error([
+                        'message' => sprintf(
+                            __( 'Missing required field: %s', 'wc-customer-lists' ),
+                            esc_html( $field )
+                        ),
+                    ]);
                 }
+
+                update_post_meta(
+                    $list_id,
+                    '_' . $field,
+                    sanitize_text_field( $event_data[ $field ] )
+                );
             }
+        }
 
-            $list->set_item( $product_id );
+        // 5️⃣ Add the product
+        $list->set_item( $product_id );
 
-            wp_send_json_success( [
-                'message' => __( 'Product added to list.', 'wc-customer-lists' ),
-            ] );
+        wp_send_json_success( [
+            'message' => __( 'Product added to list.', 'wc-customer-lists' ),
+        ] );
 
-        } catch ( \Throwable $e ) {
-            wp_send_json_error( [ 'message' => $e->getMessage() ] );
+    } catch ( \Throwable $e ) {
+        wp_send_json_error( [ 'message' => $e->getMessage() ] );
         }
     }
 }
