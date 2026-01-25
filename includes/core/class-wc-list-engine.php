@@ -5,7 +5,7 @@
  * @package WC_Customer_Lists
  */
 
-declared( 'ABSPATH' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 namespace WC_Customer_Lists\Core;
 
@@ -42,54 +42,82 @@ abstract class List_Engine {
 	 * Called on creation/update.
 	 */
 	public function validate(): void {
-		// Default: no constraints.
+		$items = $this->get_items();
+		$limits = $this->get_limits();
+
+		// Check max items
+		$max_items = $limits['max_items'] ?? 0;
+		if ( $max_items > 0 && count( $items ) > $max_items ) {
+			throw new \InvalidArgumentException(
+				sprintf(
+					__( 'This list cannot have more than %d items.', 'wc-customer-lists' ),
+					$max_items
+				)
+			);
+		}
 	}
 
 	/**
-	 * Get list owner ID.
+	 * Get the list owner ID.
 	 */
 	public function get_owner_id(): int {
 		return $this->owner_id;
 	}
 
 	/**
-	 * Get list ID.
+	 * Get the list ID.
 	 */
 	public function get_id(): int {
 		return $this->post_id;
 	}
 
 	/**
- * Add or update a product in the list.
- */
-public function set_item( int $product_id, int $quantity = 1 ): void {
-    if ( $quantity <= 0 ) {
-        $this->remove_item( $product_id );
-        return;
-    }
+	 * Get plugin settings-based limits for this list.
+	 *
+	 * @return array
+	 */
+	protected function get_limits(): array {
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$list_type = static::get_post_type();
+		$limits = $settings['list_limits'][ $list_type ] ?? [];
 
-    // 1️⃣ Get plugin settings
-    $settings = get_option( 'wc_customer_lists_settings', [] );
-    $list_type = static::get_post_type();
-    $list_limits = $settings['list_limits'][$list_type] ?? [];
-
-    // 2️⃣ Check max items per list
-    $max_items = intval( $list_limits['max_items'] ?? 0 ); // 0 = unlimited
-    $current_count = count( $this->get_items() );
-
-    if ( $max_items > 0 && ! isset( $this->get_items()[$product_id] ) && $current_count >= $max_items ) {
-        throw new \InvalidArgumentException(
-            sprintf(
-                __( 'This list already has the maximum allowed items (%d).', 'wc-customer-lists' ),
-                $max_items
-            )
-        );
-    }
-
-    // 3️⃣ Add/update item
-    update_post_meta( $this->post_id, '_item_' . $product_id, $quantity );
+		return [
+			'max_items'            => isset( $limits['max_items'] ) ? (int) $limits['max_items'] : 0,
+			'not_purchased_action' => $limits['not_purchased_action'] ?? 'keep',
+		];
 	}
-	
+
+	/**
+	 * Add or update a product in the list.
+	 *
+	 * @param int $product_id
+	 * @param int $quantity
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function set_item( int $product_id, int $quantity = 1 ): void {
+		if ( $quantity <= 0 ) {
+			$this->remove_item( $product_id );
+			return;
+		}
+
+		$limits = $this->get_limits();
+		$max_items = $limits['max_items'] ?? 0;
+		$items = $this->get_items();
+
+		// Prevent adding if max_items reached (but allow updating existing item)
+		if ( $max_items > 0 && ! isset( $items[ $product_id ] ) && count( $items ) >= $max_items ) {
+			throw new \InvalidArgumentException(
+				sprintf(
+					__( 'This list already has the maximum allowed items (%d).', 'wc-customer-lists' ),
+					$max_items
+				)
+			);
+		}
+
+		update_post_meta( $this->post_id, '_item_' . $product_id, $quantity );
+	}
+
 	/**
 	 * Remove a product from the list.
 	 */
@@ -104,11 +132,11 @@ public function set_item( int $product_id, int $quantity = 1 ): void {
 	 */
 	public function get_items(): array {
 		$meta  = get_post_meta( $this->post_id );
-		$items = array();
+		$items = [];
 
 		foreach ( $meta as $key => $values ) {
 			if ( str_starts_with( $key, '_item_' ) ) {
-				$product_id          = (int) str_replace( '_item_', '', $key );
+				$product_id = (int) str_replace( '_item_', '', $key );
 				$items[ $product_id ] = (int) $values[0];
 			}
 		}
@@ -117,7 +145,7 @@ public function set_item( int $product_id, int $quantity = 1 ): void {
 	}
 
 	/**
-	 * Check if current user can manage this list.
+	 * Check if the current user can manage this list.
 	 */
 	public function current_user_can_manage(): bool {
 		$user_id = get_current_user_id();
@@ -127,5 +155,15 @@ public function set_item( int $product_id, int $quantity = 1 ): void {
 		}
 
 		return $user_id === $this->owner_id;
+	}
+
+	/**
+	 * Get the action for not purchased items (from settings)
+	 *
+	 * @return string
+	 */
+	public function get_not_purchased_action(): string {
+		$limits = $this->get_limits();
+		return $limits['not_purchased_action'] ?? 'keep';
 	}
 }
