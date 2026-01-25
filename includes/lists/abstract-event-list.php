@@ -7,11 +7,13 @@
  * @package WC_Customer_Lists
  */
 
-declared( 'ABSPATH' ) || exit;
+defined( 'ABSPATH' ) || exit;
 
 namespace WC_Customer_Lists\Lists;
 
 use WC_Customer_Lists\Core\List_Engine;
+use WC_Customer_Lists\Core\List_Registry;
+use InvalidArgumentException;
 
 abstract class Event_List extends List_Engine {
 
@@ -103,7 +105,7 @@ abstract class Event_List extends List_Engine {
 	}
 
 	/**
-	 * Set event type identifier.
+	 * Set event type identifier (protected; used by concrete classes).
 	 */
 	protected function set_event_type( string $type ): void {
 		update_post_meta( $this->post_id, self::META_EVENT_TYPE, sanitize_key( $type ) );
@@ -111,24 +113,84 @@ abstract class Event_List extends List_Engine {
 
 	/**
 	 * Validate shared event constraints.
+	 *
+	 * Enforces:
+	 * - Max-per-user per event type
+	 * - Closing date <= delivery deadline
 	 */
 	public function validate(): void {
-		// One event list per user per event type can be enforced here later.
+		parent::validate();
+
+		// Max per user per event type
+		$max_per_user = List_Registry::get_max_per_user( $this->get_post_type() );
+
+		if ( $max_per_user > 0 ) {
+			$existing = get_posts( [
+				'author'      => $this->get_owner_id(),
+				'post_type'   => $this->get_post_type(),
+				'post_status' => [ 'publish', 'private' ],
+				'meta_key'    => self::META_EVENT_TYPE,
+				'meta_value'  => $this->get_event_type(),
+				'numberposts' => -1,
+				'fields'      => 'ids',
+			] );
+
+			// Exclude current post from count if updating
+			if ( $this->post_id && ( $key = array_search( $this->post_id, $existing, true ) ) !== false ) {
+				unset( $existing[ $key ] );
+			}
+
+			if ( count( $existing ) >= $max_per_user ) {
+				throw new InvalidArgumentException( sprintf(
+					'You can only create %d list(s) of type "%s".',
+					$max_per_user,
+					$this->get_event_type()
+				) );
+			}
+		}
+
+		// Closing date <= delivery deadline
+		$closing    = strtotime( $this->get_closing_date() );
+		$deadline   = strtotime( $this->get_delivery_deadline() );
+
+		if ( $closing && $deadline && $closing > $deadline ) {
+			throw new InvalidArgumentException( 'Closing date cannot be later than delivery deadline.' );
+		}
 	}
- public function schedule_auto_cart(): void {
-        if ( ! $this->supports_auto_cart() ) {
-            return;
-        }
 
-        $closing_timestamp = strtotime( $this->get_closing_date() . ' 23:59:59' );
-        if ( ! wp_next_scheduled( 'wc_customer_list_auto_cart', array( $this->post_id ) ) ) {
-            wp_schedule_single_event( $closing_timestamp, 'wc_customer_list_auto_cart', array( $this->post_id ) );
-        }
-    }
+	/**
+	 * Schedule automatic cart addition on closing date.
+	 */
+	public function schedule_auto_cart(): void {
+		if ( ! $this->supports_auto_cart() ) {
+			return;
+		}
 
-    protected function supports_auto_cart(): bool {
-        // Pull from registry if needed
-        $config = \WC_Customer_Lists\Core\List_Registry::get_list_config( $this->get_post_type() );
-        return ! empty( $config['supports_auto_cart'] );
-    }
+		$closing_timestamp = strtotime( $this->get_closing_date() . ' 23:59:59' );
+
+		if ( ! wp_next_scheduled( 'wc_customer_list_auto_cart', [ $this->post_id ] ) ) {
+			wp_schedule_single_event( $closing_timestamp, 'wc_customer_list_auto_cart', [ $this->post_id ] );
+		}
+	}
+
+	/**
+	 * Returns whether this list type supports auto-cart.
+	 */
+	protected function supports_auto_cart(): bool {
+		$config = List_Registry::get_list_config( $this->get_post_type() );
+		return ! empty( $config['supports_auto_cart'] );
+	}
+
+	/**
+	 * Placeholder to handle auto-cart when cron fires.
+	 *
+	 * Concrete classes or plugin bootstrap should implement the actual transfer
+	 * of remaining items to the owner's cart, with optional badge/label.
+	 *
+	 * @param int $post_id List post ID
+	 */
+	public static function handle_auto_cart( int $post_id ): void {
+		// TODO: implement adding remaining items to cart with badge
+	}
+
 }
