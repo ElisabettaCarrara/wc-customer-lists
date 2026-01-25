@@ -22,7 +22,27 @@ class List_Registry {
 	 *
 	 * @var array<string,class-string<List_Engine>>
 	 */
-	protected static array $list_types = array();
+	protected static array $list_types = array(
+    // CPT slug => configuration
+    'wc_bridal_list' => [
+        'class'              => \WC_Customer_Lists\Lists\Bridal_List::class,
+        'supports_events'    => true,
+        'supports_auto_cart' => true,
+        'max_per_user'       => 1,
+    ],
+    'wc_event_list' => [
+        'class'              => \WC_Customer_Lists\Lists\Generic_Event_List::class,
+        'supports_events'    => true,
+        'supports_auto_cart' => true,
+        'max_per_user'       => 0,
+    ],
+    'wc_wishlist' => [
+        'class'              => \WC_Customer_Lists\Lists\Wishlist::class,
+        'supports_events'    => false,
+        'supports_auto_cart' => false,
+        'max_per_user'       => 0,
+    ],
+);
 
 	/**
 	 * Register a list type.
@@ -30,13 +50,20 @@ class List_Registry {
 	 * @param string $post_type  CPT slug.
 	 * @param string $class_name Fully-qualified class name.
 	 */
-	public static function register_list_type( string $post_type, string $class_name ): void {
-		if ( ! is_subclass_of( $class_name, List_Engine::class ) ) {
-			throw new InvalidArgumentException( 'List class must extend List_Engine.' );
-		}
+	public static function register_list_type( string $post_type, array $config ): void {
+    if ( ! isset( $config['class'] ) || ! is_subclass_of( $config['class'], List_Engine::class ) ) {
+        throw new InvalidArgumentException( 'List class must extend List_Engine.' );
+    }
 
-		self::$list_types[ $post_type ] = $class_name;
-	}
+    self::$list_types[ $post_type ] = $config;
+}
+
+public static function get_list_config( string $post_type ): array {
+    if ( ! isset( self::$list_types[ $post_type ] ) ) {
+        throw new InvalidArgumentException( 'Unknown list type.' );
+    }
+    return self::$list_types[ $post_type ];
+}
 
 	/**
 	 * Register all list CPTs.
