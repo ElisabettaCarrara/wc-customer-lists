@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('wc-customer-lists-modal');
     const modalContent = modal.querySelector('.wc-customer-lists-modal-content');
     const submitBtn = modal.querySelector('.modal-submit-btn');
+    const overlay = modal.querySelector('.wc-customer-lists-modal-overlay');
     let currentProductId = null;
 
     /**
@@ -35,7 +36,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Close when clicking on overlay
-    const overlay = modal.querySelector('.wc-customer-lists-modal-overlay');
     overlay.addEventListener('click', function () {
         if (modal.open) closeModal();
     });
@@ -101,6 +101,9 @@ document.addEventListener('DOMContentLoaded', function () {
             wrapper.appendChild(label);
             wrapper.appendChild(input);
             container.appendChild(wrapper);
+
+            // Trigger slide-in animation
+            setTimeout(() => wrapper.classList.add('show'), 10);
         });
     }
 
