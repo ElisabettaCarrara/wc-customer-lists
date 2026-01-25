@@ -24,13 +24,20 @@ document.addEventListener('DOMContentLoaded', function () {
         modalContent.innerHTML = '<p class="wc-customer-lists-loading">Loading your lists...</p>';
     }
 
-    // Close modal events
+    /**
+     * Close modal events
+     */
     modal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+
+    // Close on ESC key
     window.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && modal.open) closeModal();
     });
-    modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeModal();
+
+    // Close when clicking on overlay
+    const overlay = modal.querySelector('.wc-customer-lists-modal-overlay');
+    overlay.addEventListener('click', function () {
+        if (modal.open) closeModal();
     });
 
     /**
@@ -42,11 +49,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 modalContent.innerHTML = html;
                 modal.showModal();
 
-                // After injecting the HTML, attach dropdown change handler
+                // Attach change handler for dropdown
                 const listDropdown = modalContent.querySelector('select[name="wc_list_id"]');
                 if (listDropdown) {
                     listDropdown.addEventListener('change', handleListChange);
-                    handleListChange(); // initialize first selected list
+                    handleListChange(); // initialize first selection
                 }
             })
             .catch(err => {
@@ -57,18 +64,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Handle list selection change to dynamically show/hide event fields
+     * Handle list selection change to show/hide event fields
      */
     function handleListChange() {
         const selectedList = modalContent.querySelector('select[name="wc_list_id"]');
         const container = modalContent.querySelector('#wc_event_fields_container');
 
         if (!selectedList || !container) return;
-
         container.innerHTML = '';
 
         const supportsEvents = selectedList.selectedOptions[0].dataset.supportsEvents === '1';
-
         if (!supportsEvents) return;
 
         // Dynamically add standard event fields
@@ -113,15 +118,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const listId = selectedList.value;
 
-        // Collect event fields data
+        // Collect event data safely
         const eventData = {};
+        let missingField = false;
         modalContent.querySelectorAll('#wc_event_fields_container input').forEach(input => {
             if (input.required && !input.value) {
-                alert(`Please fill in the ${input.previousSibling.textContent} field.`);
-                throw new Error('Missing required field'); // stop submission
+                alert(`Please fill in the "${input.previousSibling.textContent}" field.`);
+                missingField = true;
+                return;
             }
             eventData[input.name] = input.value;
         });
+        if (missingField) return;
 
         addProductToList(currentProductId, listId, eventData)
             .then(resp => {
@@ -138,10 +146,11 @@ document.addEventListener('DOMContentLoaded', function () {
      * Fetch user lists via AJAX
      */
     function fetchUserLists(productId) {
-        const params = new URLSearchParams();
-        params.append('action', 'wccl_get_user_lists');
-        params.append('nonce', WCCL_Ajax.nonce);
-        params.append('product_id', productId);
+        const params = new URLSearchParams({
+            action: 'wccl_get_user_lists',
+            nonce: WCCL_Ajax.nonce,
+            product_id: productId
+        });
 
         return fetch(WCCL_Ajax.ajax_url, {
             method: 'POST',
@@ -159,11 +168,12 @@ document.addEventListener('DOMContentLoaded', function () {
      * Add product to list via AJAX
      */
     function addProductToList(productId, listId, eventData = {}) {
-        const params = new URLSearchParams();
-        params.append('action', 'wccl_add_product_to_list');
-        params.append('nonce', WCCL_Ajax.nonce);
-        params.append('product_id', productId);
-        params.append('list_id', listId);
+        const params = new URLSearchParams({
+            action: 'wccl_add_product_to_list',
+            nonce: WCCL_Ajax.nonce,
+            product_id: productId,
+            list_id: listId
+        });
 
         for (const key in eventData) {
             params.append(`event_data[${key}]`, eventData[key]);
