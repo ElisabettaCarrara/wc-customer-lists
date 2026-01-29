@@ -9,12 +9,12 @@
  * @package WC_Customer_Lists
  */
 
-defined( 'ABSPATH' ) || exit;
-
 namespace WC_Customer_Lists\Core;
 
 use InvalidArgumentException;
 use WP_Post;
+
+defined( 'ABSPATH' ) || exit;
 
 class List_Registry {
 
