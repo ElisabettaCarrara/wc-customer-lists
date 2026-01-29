@@ -9,9 +9,9 @@ defined( 'ABSPATH' ) || exit;
 
 final class WC_Customer_Lists {
 
-    private static ?WC_Customer_Lists $instance = null;
+    private static ?self $instance = null;
 
-    public static function get_instance(): WC_Customer_Lists {
+    public static function get_instance(): self {
         if ( null === self::$instance ) {
             self::$instance = new self();
         }
@@ -27,25 +27,30 @@ final class WC_Customer_Lists {
      * Load required files.
      */
     private function includes(): void {
+
         // Core
-        require_once __DIR__ . '/core/class-list-engine.php';
-        require_once __DIR__ . '/core/class-list-registry.php';
+        require_once __DIR__ . '/core/class-wc-customer-lists-list-engine.php';
+        require_once __DIR__ . '/core/class-wc-customer-lists-list-registry.php';
 
         // Lists
-        require_once __DIR__ . '/lists/class-event-list.php';
-        require_once __DIR__ . '/lists/class-bridal-list.php';
-        require_once __DIR__ . '/lists/class-baby-list.php';
-        require_once __DIR__ . '/lists/class-generic-event-list.php';
-        require_once __DIR__ . '/lists/class-wishlist-base.php';
-        require_once __DIR__ . '/lists/class-wishlist.php';
+        require_once __DIR__ . '/lists/class-wc-customer-lists-event-list-base.php';
+        require_once __DIR__ . '/lists/class-wc-customer-lists-generic-event-list.php';
+        require_once __DIR__ . '/lists/class-wc-customer-lists-bridal-list.php';
+        require_once __DIR__ . '/lists/class-wc-customer-lists-baby-list.php';
+        require_once __DIR__ . '/lists/class-wc-customer-lists-wishlist-base.php';
+        require_once __DIR__ . '/lists/class-wc-customer-lists-wishlist.php';
 
         // Admin
         if ( is_admin() ) {
-            require_once __DIR__ . '/admin/class-admin.php';
+            require_once __DIR__ . '/admin/class-wc-customer-lists-admin.php';
         }
 
         // AJAX
-        require_once __DIR__ . '/ajax/class-ajax.php';
+        require_once __DIR__ . '/ajax/class-wc-customer-lists-ajax-handlers.php';
+
+        // UI
+        require_once __DIR__ . '/ui/class-wc-customer-lists-my-account.php';
+        require_once __DIR__ . '/ui/class-wc-customer-lists-product-modal.php';
     }
 
     /**
@@ -53,7 +58,6 @@ final class WC_Customer_Lists {
      */
     private function register_hooks(): void {
         add_action( 'init', [ $this, 'register_post_types' ] );
-
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
     }
 
@@ -62,18 +66,25 @@ final class WC_Customer_Lists {
     }
 
     public function enqueue_scripts(): void {
+
         wp_enqueue_style(
             'wc-customer-lists',
-            plugins_url( 'assets/css/frontend.css', WC_CUSTOMER_LISTS_FILE ),
+            plugins_url(
+                'includes/assets/css/wc-customer-lists.css',
+                WC_CUSTOMER_LISTS_PLUGIN_FILE
+            ),
             [],
-            '1.0.0'
+            WC_CUSTOMER_LISTS_VERSION
         );
 
         wp_enqueue_script(
             'wc-customer-lists',
-            plugins_url( 'assets/js/frontend.js', WC_CUSTOMER_LISTS_FILE ),
-            [],
-            '1.0.0',
+            plugins_url(
+                'includes/assets/js/wc-customer-lists.js',
+                WC_CUSTOMER_LISTS_PLUGIN_FILE
+            ),
+            [ 'jquery' ],
+            WC_CUSTOMER_LISTS_VERSION,
             true
         );
 
