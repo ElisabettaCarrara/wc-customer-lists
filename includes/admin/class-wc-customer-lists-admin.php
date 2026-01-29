@@ -8,9 +8,9 @@
  * @package WC_Customer_Lists
  */
 
-defined( 'ABSPATH' ) || exit;
-
 use WC_Customer_Lists\Core\List_Registry;
+
+defined( 'ABSPATH' ) || exit;
 
 final class WC_Customer_Lists_Admin {
 
