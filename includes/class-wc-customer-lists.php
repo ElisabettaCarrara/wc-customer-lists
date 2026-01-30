@@ -2,99 +2,136 @@
 /**
  * WC Customer Lists Main Plugin Class.
  *
- * @package WC_Customer_Lists
+ * @package wc-customer-lists
+ * @since 1.0.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
 final class WC_Customer_Lists {
 
-    private static ?self $instance = null;
+	/**
+	 * Singleton instance.
+	 *
+	 * @var self|null
+	 */
+	private static ?self $instance = null;
 
-    public static function get_instance(): self {
-        if ( null === self::$instance ) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
+	/**
+	 * Get singleton instance.
+	 *
+	 * @return self
+	 */
+	public static function get_instance(): self {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
 
-    private function __construct() {
-        $this->includes();
-        $this->register_hooks();
-    }
+		return self::$instance;
+	}
 
-    /**
-     * Load required files.
-     */
-    private function includes(): void {
+	/**
+	 * Constructor.
+	 */
+	private function __construct() {
+		$this->includes();
+		$this->register_hooks();
+	}
 
-        // Core
-        require_once __DIR__ . '/core/class-wc-customer-lists-list-engine.php';
-        require_once __DIR__ . '/core/class-wc-customer-lists-list-registry.php';
+	/**
+	 * Load required files.
+	 *
+	 * @since 1.0.0
+	 */
+	private function includes(): void {
+		$core_dir = __DIR__ . '/core/';
+		$lists_dir = __DIR__ . '/lists/';
+		$admin_dir = __DIR__ . '/admin/';
+		$ajax_dir = __DIR__ . '/ajax/';
+		$ui_dir = __DIR__ . '/ui/';
 
-        // Lists
-        require_once __DIR__ . '/lists/class-wc-customer-lists-event-list-base.php';
-        require_once __DIR__ . '/lists/class-wc-customer-lists-generic-event-list.php';
-        require_once __DIR__ . '/lists/class-wc-customer-lists-bridal-list.php';
-        require_once __DIR__ . '/lists/class-wc-customer-lists-baby-list.php';
-        require_once __DIR__ . '/lists/class-wc-customer-lists-wishlist-base.php';
-        require_once __DIR__ . '/lists/class-wc-customer-lists-wishlist.php';
+		// Core.
+		require_once $core_dir . 'class-wc-customer-lists-list-engine.php';
+		require_once $core_dir . 'class-wc-customer-lists-list-registry.php';
 
-        // Admin
-        if ( is_admin() ) {
-            require_once __DIR__ . '/admin/class-wc-customer-lists-admin.php';
-        }
+		// Lists.
+		require_once $lists_dir . 'abstract-class-wc-customer-list-base.php'; // Assume abstract.
+		require_once $lists_dir . 'class-wc-customer-lists-generic-event-list.php';
+		require_once $lists_dir . 'class-wc-customer-lists-bridal-list.php';
+		require_once $lists_dir . 'class-wc-customer-lists-baby-list.php';
+		require_once $lists_dir . 'class-wc-customer-lists-wishlist-base.php';
+		require_once $lists_dir . 'class-wc-customer-lists-wishlist.php';
 
-        // AJAX
-        require_once __DIR__ . '/ajax/class-wc-customer-lists-ajax-handlers.php';
+		// Conditional.
+		if ( is_admin() ) {
+			require_once $admin_dir . 'class-wc-customer-lists-admin.php';
+		}
 
-        // UI
-        require_once __DIR__ . '/ui/class-wc-customer-lists-my-account.php';
-        require_once __DIR__ . '/ui/class-wc-customer-lists-product-modal.php';
-    }
+		require_once $ajax_dir . 'class-wc-customer-lists-ajax-handlers.php';
+		require_once $ui_dir . 'class-wc-customer-lists-my-account.php';
+		require_once $ui_dir . 'class-wc-customer-lists-product-modal.php';
+	}
 
-    /**
-     * Register global hooks.
-     */
-    private function register_hooks(): void {
-        add_action( 'init', [ $this, 'register_post_types' ] );
-        add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
-    }
+	/**
+	 * Register global hooks.
+	 *
+	 * @since 1.0.0
+	 */
+	private function register_hooks(): void {
+		add_action( 'init', [ $this, 'register_post_types' ] );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
+		add_action( 'after_setup_theme', [ $this, 'add_template_hooks' ] ); // New: templates.
+	}
 
-    public function register_post_types(): void {
-        \WC_Customer_Lists\Core\List_Registry::register_post_types();
-    }
+	/**
+	 * Register post types.
+	 *
+	 * @since 1.0.0
+	 */
+	public function register_post_types(): void {
+		// Removed namespace—assume List_Registry::register_post_types().
+		WC_Customer_Lists_List_Registry::register_post_types();
+	}
 
-    public function enqueue_scripts(): void {
+	/**
+	 * Enqueue frontend scripts/styles.
+	 *
+	 * @since 1.0.0
+	 */
+	public function enqueue_scripts(): void {
+		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 
-        wp_enqueue_style(
-            'wc-customer-lists',
-            plugins_url(
-                'includes/assets/css/wc-customer-lists.css',
-                WC_CUSTOMER_LISTS_PLUGIN_FILE
-            ),
-            [],
-            WC_CUSTOMER_LISTS_VERSION
-        );
+		wp_enqueue_style(
+			'wc-customer-lists',
+			WC_CUSTOMER_LISTS_PLUGIN_URL . "assets/css/wc-customer-lists{$suffix}.css",
+			[],
+			WC_CUSTOMER_LISTS_VERSION
+		);
 
-        wp_enqueue_script(
-            'wc-customer-lists',
-            plugins_url(
-                'includes/assets/js/wc-customer-lists.js',
-                WC_CUSTOMER_LISTS_PLUGIN_FILE
-            ),
-            [ 'jquery' ],
-            WC_CUSTOMER_LISTS_VERSION,
-            true
-        );
+		wp_enqueue_script(
+			'wc-customer-lists',
+			WC_CUSTOMER_LISTS_PLUGIN_URL . "assets/js/wc-customer-lists{$suffix}.js",
+			[ 'jquery' ],
+			WC_CUSTOMER_LISTS_VERSION,
+			true
+		);
 
-        wp_localize_script(
-            'wc-customer-lists',
-            'WCCL_Ajax',
-            [
-                'ajax_url' => admin_url( 'admin-ajax.php' ),
-                'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
-            ]
-        );
-    }
+		wp_localize_script(
+			'wc-customer-lists',
+			'WCCL_Ajax',
+			[
+				'ajax_url' => admin_url( 'admin-ajax.php' ),
+				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
+			]
+		);
+	}
+
+	/**
+	 * Add template hooks (new).
+	 *
+	 * @since 1.0.0
+	 */
+	public function add_template_hooks(): void {
+		// e.g., add_action( 'woocommerce_single_product_summary', ... );
+	}
 }
