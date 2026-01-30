@@ -2,14 +2,17 @@
 /**
  * WC Customer Lists Main Plugin Class.
  *
+ * Orchestrates includes, core hooks, cron.
+ *
  * @package    wc-customer-lists
  * @since      1.0.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-// Namespaced imports (matches List_Engine).
+// Core namespace imports.
 use WC_Customer_Lists\Core\List_Registry;
+use WC_Customer_Lists\Lists\Event_List;
 
 final class WC_Customer_Lists {
 
@@ -55,11 +58,11 @@ final class WC_Customer_Lists {
 		$ajax_dir  = __DIR__ . '/ajax/';
 		$ui_dir    = __DIR__ . '/ui/';
 
-		// Core (always).
+		// Core.
 		require_once $core_dir . 'class-wc-customer-lists-list-engine.php';
 		require_once $core_dir . 'class-wc-customer-lists-list-registry.php';
 
-		// Lists (always).
+		// Lists.
 		require_once $lists_dir . 'class-wc-customer-lists-event-list-base.php';
 		require_once $lists_dir . 'class-wc-customer-lists-generic-event-list.php';
 		require_once $lists_dir . 'class-wc-customer-lists-bridal-list.php';
@@ -67,14 +70,12 @@ final class WC_Customer_Lists {
 		require_once $lists_dir . 'class-wc-customer-lists-wishlist-base.php';
 		require_once $lists_dir . 'class-wc-customer-lists-wishlist.php';
 
-		// AJAX (frontend+admin).
+		// AJAX/UI.
 		require_once $ajax_dir . 'class-wc-customer-lists-ajax-handlers.php';
-
-		// UI (frontend).
 		require_once $ui_dir . 'class-wc-customer-lists-my-account.php';
 		require_once $ui_dir . 'class-wc-customer-lists-product-modal.php';
 
-		// Admin (conditional).
+		// Admin.
 		if ( is_admin() ) {
 			require_once $admin_dir . 'class-wc-customer-lists-admin.php';
 		}
@@ -88,7 +89,9 @@ final class WC_Customer_Lists {
 	private function register_hooks(): void {
 		add_action( 'init', [ $this, 'register_post_types' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
-		add_action( 'after_setup_theme', [ $this, 'add_template_hooks' ] );
+
+		// CRON: Auto-cart (critical!).
+		add_action( 'wc_customer_list_auto_cart', [ Event_List::class, 'handle_auto_cart' ] );
 	}
 
 	/**
@@ -97,11 +100,11 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	public function register_post_types(): void {
-		List_Registry::register_post_types(); // ✅ Short name via use import.
+		List_Registry::register_post_types();
 	}
 
 	/**
-	 * Enqueue frontend scripts/styles.
+	 * Enqueue frontend assets.
 	 *
 	 * @since 1.0.0
 	 */
@@ -131,17 +134,8 @@ final class WC_Customer_Lists {
 				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
 			]
 		);
-	}
 
-	/**
-	 * Add template/theme hooks.
-	 *
-	 * @since 1.0.0
-	 */
-	public function add_template_hooks(): void {
-		add_filter( 'woocommerce_account_menu_items', [ $this, 'add_my_account_menu_item' ] );
-		add_action( 'woocommerce_account_lists_endpoint', [ $this, 'my_account_lists_content' ] );
-		// Add more as UI classes hook in.
+		// Nonce refresh (security).
+		wp_add_inline_script( 'wc-customer-lists', 'WCCL_Ajax.nonce = "' . wp_create_nonce( 'wc_customer_lists_nonce' ) . '";' );
 	}
-
 }
