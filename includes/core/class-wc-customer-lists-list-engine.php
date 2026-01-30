@@ -2,7 +2,8 @@
 /**
  * Core List Engine abstraction.
  *
- * @package WC_Customer_Lists
+ * @package wc-customer-lists
+ * @since 1.0.0
  */
 
 namespace WC_Customer_Lists\Core;
@@ -29,11 +30,15 @@ abstract class List_Engine {
 
 	/**
 	 * Returns the list type slug.
+	 *
+	 * @return string
 	 */
 	abstract public static function get_type(): string;
 
 	/**
 	 * Returns the CPT slug used by this list type.
+	 *
+	 * @return string
 	 */
 	abstract public static function get_post_type(): string;
 
@@ -53,6 +58,7 @@ abstract class List_Engine {
 		if ( $max_items > 0 && count( $items ) > $max_items ) {
 			throw new \InvalidArgumentException(
 				sprintf(
+					/* translators: %d: Maximum number of items allowed. */
 					__( 'This list cannot have more than %d items.', 'wc-customer-lists' ),
 					$max_items
 				)
@@ -62,6 +68,8 @@ abstract class List_Engine {
 
 	/**
 	 * Get the list owner ID.
+	 *
+	 * @return int
 	 */
 	public function get_owner_id(): int {
 		return $this->owner_id;
@@ -69,6 +77,8 @@ abstract class List_Engine {
 
 	/**
 	 * Get the list ID.
+	 *
+	 * @return int
 	 */
 	public function get_id(): int {
 		return $this->post_id;
@@ -78,8 +88,8 @@ abstract class List_Engine {
 	 * Get plugin settings-based limits for this list type.
 	 *
 	 * @return array{
-	 *     max_items:int,
-	 *     not_purchased_action:string
+	 *     max_items: int,
+	 *     not_purchased_action: string
 	 * }
 	 */
 	protected function get_limits(): array {
@@ -88,7 +98,7 @@ abstract class List_Engine {
 		$limits    = $settings['list_limits'][ $post_type ] ?? [];
 
 		return [
-			'max_items'            => isset( $limits['max_items'] ) ? (int) $limits['max_items'] : 0,
+			'max_items'            => (int) ( $limits['max_items'] ?? 0 ),
 			'not_purchased_action' => $limits['not_purchased_action'] ?? 'keep',
 		];
 	}
@@ -96,9 +106,8 @@ abstract class List_Engine {
 	/**
 	 * Add or update a product in the list.
 	 *
-	 * @param int $product_id
-	 * @param int $quantity
-	 *
+	 * @param int $product_id Product ID.
+	 * @param int $quantity   Quantity (default 1).
 	 * @throws \InvalidArgumentException
 	 */
 	public function set_item( int $product_id, int $quantity = 1 ): void {
@@ -111,7 +120,6 @@ abstract class List_Engine {
 		$max_items = (int) ( $limits['max_items'] ?? 0 );
 		$items     = $this->get_items();
 
-		// Prevent adding new items if max_items reached
 		if (
 			$max_items > 0 &&
 			! isset( $items[ $product_id ] ) &&
@@ -119,6 +127,7 @@ abstract class List_Engine {
 		) {
 			throw new \InvalidArgumentException(
 				sprintf(
+					/* translators: %d: Maximum number of items allowed. */
 					__( 'This list already has the maximum allowed items (%d).', 'wc-customer-lists' ),
 					$max_items
 				)
@@ -134,6 +143,8 @@ abstract class List_Engine {
 
 	/**
 	 * Remove a product from the list.
+	 *
+	 * @param int $product_id Product ID.
 	 */
 	public function remove_item( int $product_id ): void {
 		delete_post_meta( $this->post_id, '_item_' . $product_id );
@@ -142,7 +153,7 @@ abstract class List_Engine {
 	/**
 	 * Get all items in the list.
 	 *
-	 * @return array<int,int> product_id => quantity
+	 * @return array<int, int> Array of product_id => quantity.
 	 */
 	public function get_items(): array {
 		$meta  = get_post_meta( $this->post_id );
@@ -160,6 +171,8 @@ abstract class List_Engine {
 
 	/**
 	 * Check if the current user can manage this list.
+	 *
+	 * @return bool
 	 */
 	public function current_user_can_manage(): bool {
 		$user_id = get_current_user_id();
@@ -173,6 +186,8 @@ abstract class List_Engine {
 
 	/**
 	 * Get the configured action for not-purchased items.
+	 *
+	 * @return string
 	 */
 	public function get_not_purchased_action(): string {
 		$limits = $this->get_limits();
