@@ -2,11 +2,14 @@
 /**
  * WC Customer Lists Main Plugin Class.
  *
- * @package wc-customer-lists
- * @since 1.0.0
+ * @package    wc-customer-lists
+ * @since      1.0.0
  */
 
 defined( 'ABSPATH' ) || exit;
+
+// Namespaced imports (matches List_Engine).
+use WC_Customer_Lists\Core\List_Registry;
 
 final class WC_Customer_Lists {
 
@@ -32,6 +35,8 @@ final class WC_Customer_Lists {
 
 	/**
 	 * Constructor.
+	 *
+	 * @since 1.0.0
 	 */
 	private function __construct() {
 		$this->includes();
@@ -44,32 +49,35 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	private function includes(): void {
-		$core_dir = __DIR__ . '/core/';
+		$core_dir  = __DIR__ . '/core/';
 		$lists_dir = __DIR__ . '/lists/';
 		$admin_dir = __DIR__ . '/admin/';
-		$ajax_dir = __DIR__ . '/ajax/';
-		$ui_dir = __DIR__ . '/ui/';
+		$ajax_dir  = __DIR__ . '/ajax/';
+		$ui_dir    = __DIR__ . '/ui/';
 
-		// Core.
+		// Core (always).
 		require_once $core_dir . 'class-wc-customer-lists-list-engine.php';
 		require_once $core_dir . 'class-wc-customer-lists-list-registry.php';
 
-		// Lists.
-		require_once $lists_dir . 'abstract-class-wc-customer-list-base.php'; // Assume abstract.
+		// Lists (always).
+		require_once $lists_dir . 'class-wc-customer-lists-event-list-base.php';
 		require_once $lists_dir . 'class-wc-customer-lists-generic-event-list.php';
 		require_once $lists_dir . 'class-wc-customer-lists-bridal-list.php';
 		require_once $lists_dir . 'class-wc-customer-lists-baby-list.php';
 		require_once $lists_dir . 'class-wc-customer-lists-wishlist-base.php';
 		require_once $lists_dir . 'class-wc-customer-lists-wishlist.php';
 
-		// Conditional.
+		// AJAX (frontend+admin).
+		require_once $ajax_dir . 'class-wc-customer-lists-ajax-handlers.php';
+
+		// UI (frontend).
+		require_once $ui_dir . 'class-wc-customer-lists-my-account.php';
+		require_once $ui_dir . 'class-wc-customer-lists-product-modal.php';
+
+		// Admin (conditional).
 		if ( is_admin() ) {
 			require_once $admin_dir . 'class-wc-customer-lists-admin.php';
 		}
-
-		require_once $ajax_dir . 'class-wc-customer-lists-ajax-handlers.php';
-		require_once $ui_dir . 'class-wc-customer-lists-my-account.php';
-		require_once $ui_dir . 'class-wc-customer-lists-product-modal.php';
 	}
 
 	/**
@@ -80,7 +88,7 @@ final class WC_Customer_Lists {
 	private function register_hooks(): void {
 		add_action( 'init', [ $this, 'register_post_types' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
-		add_action( 'after_setup_theme', [ $this, 'add_template_hooks' ] ); // New: templates.
+		add_action( 'after_setup_theme', [ $this, 'add_template_hooks' ] );
 	}
 
 	/**
@@ -89,8 +97,7 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	public function register_post_types(): void {
-		// Removed namespace—assume List_Registry::register_post_types().
-		WC_Customer_Lists_List_Registry::register_post_types();
+		List_Registry::register_post_types(); // ✅ Short name via use import.
 	}
 
 	/**
@@ -127,11 +134,14 @@ final class WC_Customer_Lists {
 	}
 
 	/**
-	 * Add template hooks (new).
+	 * Add template/theme hooks.
 	 *
 	 * @since 1.0.0
 	 */
 	public function add_template_hooks(): void {
-		// e.g., add_action( 'woocommerce_single_product_summary', ... );
+		add_filter( 'woocommerce_account_menu_items', [ $this, 'add_my_account_menu_item' ] );
+		add_action( 'woocommerce_account_lists_endpoint', [ $this, 'my_account_lists_content' ] );
+		// Add more as UI classes hook in.
 	}
+
 }
