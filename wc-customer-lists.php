@@ -16,7 +16,8 @@
  * WC requires at least: 7.0
  * WC tested up to: 8.3
  *
- * @package WC_Customer_Lists
+ * @package    wc-customer-lists
+ * @author     Elisabetta Carrara
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -26,15 +27,17 @@ defined( 'ABSPATH' ) || exit;
  */
 if ( ! in_array(
 	'woocommerce/woocommerce.php',
-	(array) apply_filters( 'active_plugins', get_option( 'active_plugins', [] ) ),
+	apply_filters( 'active_plugins', get_option( 'active_plugins', [] ) ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.array_casting_array_cast -- Strict needle.
 	true
 ) ) {
 	add_action(
 		'admin_notices',
 		static function () {
-			echo '<div class="notice notice-error"><p>';
-			esc_html_e( 'WC Customer Lists requires WooCommerce to be active.', 'wc-customer-lists' );
-			echo '</p></div>';
+			/* translators: %s: Plugin name. */
+			printf(
+				'<div class="notice notice-error"><p>%s</p></div>',
+				esc_html__( 'WC Customer Lists requires WooCommerce to be active.', 'wc-customer-lists' )
+			);
 		}
 	);
 	return;
@@ -51,28 +54,28 @@ define( 'WC_CUSTOMER_LISTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 /**
  * Load main plugin class.
  *
- * IMPORTANT:
- * This file MUST exist and MUST NOT fatal.
+ * IMPORTANT: This file MUST exist and MUST NOT fatal.
  */
 require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
 
 /**
  * Initialize plugin.
- *
- * We do this immediately so CPTs and hooks are registered.
  */
 add_action(
 	'plugins_loaded',
 	static function () {
+		load_plugin_textdomain( // Merged for efficiency.
+			'wc-customer-lists',
+			false,
+			dirname( plugin_basename( __FILE__ ) ) . '/languages'
+		);
+
 		WC_Customer_Lists::get_instance();
 	}
 );
 
 /**
  * Plugin activation hook.
- *
- * - Registers CPTs
- * - Flushes rewrite rules
  */
 function wc_customer_lists_activate(): void {
 	$plugin = WC_Customer_Lists::get_instance();
@@ -90,15 +93,10 @@ function wc_customer_lists_deactivate(): void {
 register_deactivation_hook( __FILE__, 'wc_customer_lists_deactivate' );
 
 /**
- * Load translations.
+ * Plugin uninstall hook (optional cleanup).
  */
-add_action(
-	'plugins_loaded',
-	static function () {
-		load_plugin_textdomain(
-			'wc-customer-lists',
-			false,
-			dirname( plugin_basename( __FILE__ ) ) . '/languages'
-		);
-	}
-);
+function wc_customer_lists_uninstall(): void {
+	// Delete options, transients, etc. here if needed.
+	// e.g., delete_option( 'wc_customer_lists_settings' );
+}
+register_uninstall_hook( __FILE__, 'wc_customer_lists_uninstall' );
