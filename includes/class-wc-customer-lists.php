@@ -104,38 +104,33 @@ final class WC_Customer_Lists {
 	}
 
 	/**
-	 * Enqueue frontend assets.
-	 *
-	 * @since 1.0.0
-	 */
-	public function enqueue_scripts(): void {
-		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+ * Enqueue frontend assets (unminified).
+ *
+ * @since 1.0.0
+ */
+public function enqueue_scripts(): void {
+	wp_enqueue_style(
+		'wc-customer-lists',
+		WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/wc-customer-lists.css',
+		[],
+		WC_CUSTOMER_LISTS_VERSION
+	);
 
-		wp_enqueue_style(
-			'wc-customer-lists',
-			WC_CUSTOMER_LISTS_PLUGIN_URL . "assets/css/wc-customer-lists{$suffix}.css",
-			[],
-			WC_CUSTOMER_LISTS_VERSION
-		);
+	wp_enqueue_script(
+		'wc-customer-lists',
+		WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/js/wc-customer-lists.js',
+		[ 'jquery' ],
+		WC_CUSTOMER_LISTS_VERSION,
+		true
+	);
 
-		wp_enqueue_script(
-			'wc-customer-lists',
-			WC_CUSTOMER_LISTS_PLUGIN_URL . "assets/js/wc-customer-lists{$suffix}.js",
-			[ 'jquery' ],
-			WC_CUSTOMER_LISTS_VERSION,
-			true
-		);
-
-		wp_localize_script(
-			'wc-customer-lists',
-			'WCCL_Ajax',
-			[
-				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
-			]
-		);
-
-		// Nonce refresh (security).
-		wp_add_inline_script( 'wc-customer-lists', 'WCCL_Ajax.nonce = "' . wp_create_nonce( 'wc_customer_lists_nonce' ) . '";' );
-	}
+	wp_localize_script(
+		'wc-customer-lists',
+		'WCCL_Ajax',
+		[
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
+		]
+	);
+}
 }
