@@ -1,75 +1,86 @@
 <?php
 /**
- * Concrete Wishlist class.
+ * Wishlist Concrete.
  *
- * Handles the WooCommerce wishlist CPT and logic.
+ * Simple product wishlist functionality.
  *
  * @package WC_Customer_Lists
+ * @since   1.0.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-namespace WC_Customer_Lists\Lists;
+class WC_Customer_Lists_Wishlist extends WC_Customer_Lists_Wishlist_Base {
 
-use WC_Customer_Lists\Core\List_Registry;
+	/**
+	 * Constructor.
+	 *
+	 * @param int $post_id List post ID.
+	 */
+	public function __construct( int $post_id ) {
+		parent::__construct( $post_id );
+	}
 
-class Wishlist extends Wishlist_Base {
+	/**
+	 * List type identifier.
+	 */
+	public static function get_type(): string {
+		return 'wishlist';
+	}
 
-    /**
-     * Provide CPT registration args.
-     *
-     * @return array
-     */
-    public static function get_post_type_args(): array {
-        return [
-            'label'               => __( 'Wishlists', 'wc-customer-lists' ),
-            'public'              => true,
-            'show_ui'             => true,
-            'show_in_menu'        => true,
-            'capability_type'     => 'post',
-            'supports'            => [ 'title', 'editor', 'author' ],
-            'has_archive'         => false,
-            'show_in_rest'        => true,
-        ];
-    }
+	/**
+	 * Post type slug.
+	 */
+	public static function get_post_type(): string {
+		return 'wc_wishlist';
+	}
 
-    /**
-     * Constructor.
-     *
-     * @param int $post_id
-     */
-    public function __construct( int $post_id ) {
-        parent::__construct( $post_id );
-    }
+	/**
+	 * CPT registration args.
+	 */
+	public static function get_post_type_args(): array {
+		return [
+			'label'                 => __( 'Wishlists', 'wc-customer-lists' ),
+			'labels'                => [
+				'name'          => __( 'Wishlists', 'wc-customer-lists' ),
+				'singular_name' => __( 'Wishlist', 'wc-customer-lists' ),
+				'menu_name'     => __( 'Wishlists', 'wc-customer-lists' ),
+				'add_new'       => __( 'Add Wishlist', 'wc-customer-lists' ),
+				'add_new_item'  => __( 'Add New Wishlist', 'wc-customer-lists' ),
+			],
+			'description'           => __( 'Customer wishlists.', 'wc-customer-lists' ),
+			'public'                => false,
+			'publicly_queryable'    => false,
+			'show_ui'               => true,
+			'show_in_menu'          => 'woocommerce',
+			'query_var'             => false,
+			'rewrite'               => false,
+			'capability_type'       => 'post',
+			'map_meta_cap'          => true,
+			'has_archive'           => false,
+			'hierarchical'          => false,
+			'menu_position'         => null,
+			'menu_icon'             => 'dashicons-star-filled',
+			'supports'              => [ 'title' ],
+			'show_in_rest'          => false,
+			'delete_with_user'      => false,
+		];
+	}
 
-    /**
-     * Validate wishlist constraints.
-     *
-     * Uses base logic but can extend for custom rules.
-     */
-    public function validate(): void {
-        parent::validate();
+	/**
+	 * Validate wishlist constraints.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	public function validate(): void {
+		parent::validate();
 
-        // Example: enforce a minimum title length
-        if ( strlen( $this->get_title() ?? '' ) < 3 ) {
-            throw new \InvalidArgumentException( __( 'Wishlist title must be at least 3 characters.', 'wc-customer-lists' ) );
-        }
-    }
-
-    /**
-     * Get wishlist title.
-     */
-    public function get_title(): string {
-        return (string) get_post_field( 'post_title', $this->post_id );
-    }
-
-    /**
-     * Set wishlist title.
-     */
-    public function set_title( string $title ): void {
-        wp_update_post( [
-            'ID'         => $this->post_id,
-            'post_title' => sanitize_text_field( $title ),
-        ] );
-    }
+		// Title length minimum.
+		$post = get_post( $this->post_id );
+		if ( $post && strlen( $post->post_title ) < 3 ) {
+			throw new InvalidArgumentException(
+				__( 'Wishlist title must be at least 3 characters.', 'wc-customer-lists' )
+			);
+		}
+	}
 }
