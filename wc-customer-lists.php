@@ -16,87 +16,108 @@
  * WC requires at least: 7.0
  * WC tested up to: 8.3
  *
- * @package    wc-customer-lists
- * @author     Elisabetta Carrara
+ * @package WC_Customer_Lists
  */
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Abort early if WooCommerce is not active.
- */
-if ( ! in_array(
-	'woocommerce/woocommerce.php',
-	apply_filters( 'active_plugins', get_option( 'active_plugins', [] ) ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.array_casting_array_cast -- Strict needle.
-	true
-) ) {
+/*
+|--------------------------------------------------------------------------
+| Dependency Check
+|--------------------------------------------------------------------------
+*/
+
+if ( ! class_exists( 'WooCommerce' ) ) {
 	add_action(
 		'admin_notices',
-		static function () {
-			/* translators: %s: Plugin name. */
-			printf(
-				'<div class="notice notice-error"><p>%s</p></div>',
-				esc_html__( 'WC Customer Lists requires WooCommerce to be active.', 'wc-customer-lists' )
+		static function (): void {
+			echo '<div class="notice notice-error"><p>';
+			esc_html_e(
+				'WC Customer Lists requires WooCommerce to be installed and active.',
+				'wc-customer-lists'
 			);
+			echo '</p></div>';
 		}
 	);
+
 	return;
 }
 
-/**
- * Plugin constants.
- */
-define( 'WC_CUSTOMER_LISTS_VERSION', '1.0.0' );
-define( 'WC_CUSTOMER_LISTS_PLUGIN_FILE', __FILE__ );
-define( 'WC_CUSTOMER_LISTS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'WC_CUSTOMER_LISTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+/*
+|--------------------------------------------------------------------------
+| Plugin Constants
+|--------------------------------------------------------------------------
+*/
 
-/**
- * Load main plugin class.
- *
- * IMPORTANT: This file MUST exist and MUST NOT fatal.
- */
-require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+if ( ! defined( 'WC_CUSTOMER_LISTS_VERSION' ) ) {
+	define( 'WC_CUSTOMER_LISTS_VERSION', '1.0.0' );
+}
 
-/**
- * Initialize plugin.
- */
+if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_FILE' ) ) {
+	define( 'WC_CUSTOMER_LISTS_PLUGIN_FILE', __FILE__ );
+}
+
+if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_DIR' ) ) {
+	define( 'WC_CUSTOMER_LISTS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+}
+
+if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_URL' ) ) {
+	define( 'WC_CUSTOMER_LISTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Load Core Files
+|--------------------------------------------------------------------------
+*/
+
+$main_class = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+
+if ( ! file_exists( $main_class ) ) {
+	return;
+}
+
+require_once $main_class;
+
+/*
+|--------------------------------------------------------------------------
+| Bootstrap Plugin
+|--------------------------------------------------------------------------
+*/
+
 add_action(
 	'plugins_loaded',
-	static function () {
-		load_plugin_textdomain( // Merged for efficiency.
+	static function (): void {
+		load_plugin_textdomain(
 			'wc-customer-lists',
 			false,
-			dirname( plugin_basename( __FILE__ ) ) . '/languages'
+			dirname( plugin_basename( WC_CUSTOMER_LISTS_PLUGIN_FILE ) ) . '/languages'
 		);
 
 		WC_Customer_Lists::get_instance();
 	}
 );
 
-/**
- * Plugin activation hook.
- */
-function wc_customer_lists_activate(): void {
-	$plugin = WC_Customer_Lists::get_instance();
-	$plugin->register_post_types();
-	flush_rewrite_rules();
-}
-register_activation_hook( __FILE__, 'wc_customer_lists_activate' );
+/*
+|--------------------------------------------------------------------------
+| Activation / Deactivation Hooks
+|--------------------------------------------------------------------------
+*/
 
-/**
- * Plugin deactivation hook.
- */
-function wc_customer_lists_deactivate(): void {
-	flush_rewrite_rules();
-}
-register_deactivation_hook( __FILE__, 'wc_customer_lists_deactivate' );
+register_activation_hook(
+	__FILE__,
+	static function (): void {
+		require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
 
-/**
- * Plugin uninstall hook (optional cleanup).
- */
-function wc_customer_lists_uninstall(): void {
-	// Delete options, transients, etc. here if needed.
-	// e.g., delete_option( 'wc_customer_lists_settings' );
-}
-register_uninstall_hook( __FILE__, 'wc_customer_lists_uninstall' );
+		WC_Customer_Lists::activate();
+
+		flush_rewrite_rules();
+	}
+);
+
+register_deactivation_hook(
+	__FILE__,
+	static function (): void {
+		flush_rewrite_rules();
+	}
+);
