@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ========================================
     window.WCCL = window.WCCL || {};
     window.WCCL.showNotification = showNotification;
-})();
+});
 
 function initModal() {
     const modal = document.getElementById('wc-customer-lists-modal');
