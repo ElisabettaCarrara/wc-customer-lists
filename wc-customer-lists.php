@@ -18,21 +18,34 @@
 defined( 'ABSPATH' ) || exit;
 
 // Constants
-if ( ! defined( 'WC_CUSTOMER_LISTS_VERSION' ) ) define( 'WC_CUSTOMER_LISTS_VERSION', '1.0.0' );
-if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_FILE' ) ) define( 'WC_CUSTOMER_LISTS_PLUGIN_FILE', __FILE__ );
-if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_DIR' ) ) define( 'WC_CUSTOMER_LISTS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_URL' ) ) define( 'WC_CUSTOMER_LISTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-
-// Load main class
-$main_file = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
-if ( file_exists( $main_file ) ) {
-    require_once $main_file;
+if ( ! defined( 'WC_CUSTOMER_LISTS_VERSION' ) ) {
+    define( 'WC_CUSTOMER_LISTS_VERSION', '1.0.0' );
+}
+if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_FILE' ) ) {
+    define( 'WC_CUSTOMER_LISTS_PLUGIN_FILE', __FILE__ );
+}
+if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_DIR' ) ) {
+    define( 'WC_CUSTOMER_LISTS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+}
+if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_URL' ) ) {
+    define( 'WC_CUSTOMER_LISTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
+// WooCommerce HPOS compatibility
+add_action( 'before_woocommerce_init', function() {
+    if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+            'custom_order_tables',
+            __FILE__,
+            true
+        );
+    }
+});
+
 // Bootstrap
-add_action( 'plugins_loaded', static function(): void {
+add_action( 'plugins_loaded', function() {
     if ( ! class_exists( 'WooCommerce' ) ) {
-        add_action( 'admin_notices', static function(): void {
+        add_action( 'admin_notices', function() {
             echo '<div class="notice notice-error"><p>' . 
                  esc_html__( 'WC Customer Lists requires WooCommerce to be active.', 'wc-customer-lists' ) . 
                  '</p></div>';
@@ -40,19 +53,33 @@ add_action( 'plugins_loaded', static function(): void {
         return;
     }
 
-    load_plugin_textdomain( 'wc-customer-lists', false, dirname( plugin_basename( WC_CUSTOMER_LISTS_PLUGIN_FILE ) ) . '/languages' );
-    if ( class_exists( 'WC_Customer_Lists' ) ) {
-        WC_Customer_Lists::get_instance();
-    }
-});
+    load_plugin_textdomain( 
+        'wc-customer-lists', 
+        false, 
+        dirname( plugin_basename( WC_CUSTOMER_LISTS_PLUGIN_FILE ) ) . '/languages' 
+    );
 
-// Activation
-register_activation_hook( __FILE__, static function(): void {
+    $main_file = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
     if ( file_exists( $main_file ) ) {
         require_once $main_file;
+        
+        if ( class_exists( 'WC_Customer_Lists' ) ) {
+            WC_Customer_Lists::get_instance();
+        }
+    }
+}, 10 );
+
+// Activation
+register_activation_hook( __FILE__, function() {
+    $main_file = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+    
+    if ( file_exists( $main_file ) ) {
+        require_once $main_file;
+        
         if ( class_exists( 'WC_Customer_Lists' ) ) {
             WC_Customer_Lists::activate();
         }
     }
+    
     flush_rewrite_rules();
 });
