@@ -159,7 +159,7 @@ final class WC_Customer_Lists {
 		}
 
 		// CSS.
-		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/wc-customer-lists.css';
+		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'assets/css/wc-customer-lists.css';
 		wp_enqueue_style(
 			'wc-customer-lists',
 			$css_file,
@@ -168,7 +168,7 @@ final class WC_Customer_Lists {
 		);
 
 		// JS.
-		$js_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/js/wc-customer-lists.js';
+		$js_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'assets/js/wc-customer-lists.js';
 		wp_enqueue_script(
 			'wc-customer-lists',
 			$js_file,
