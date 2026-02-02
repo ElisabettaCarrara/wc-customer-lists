@@ -17,14 +17,14 @@ final class WC_Customer_Lists {
 	 *
 	 * @var self|null
 	 */
-	private static ?self $instance = null;
+	private static $instance = null;
 
 	/**
 	 * Get singleton instance.
 	 *
 	 * @return self
 	 */
-	public static function get_instance(): self {
+	public static function get_instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
@@ -47,10 +47,10 @@ final class WC_Customer_Lists {
 	 *
 	 * @since 1.0.0
 	 */
-	private function load_files(): void {
+	private function load_files() {
 		$base_dir = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/';
 
-		$files = [
+		$files = array(
 			// Core (must load first).
 			'core/class-wc-customer-lists-list-registry.php',
 			'core/class-wc-customer-lists-list-engine.php',
@@ -69,7 +69,7 @@ final class WC_Customer_Lists {
 			'ajax/class-wc-customer-list-ajax-handlers.php',
 			'ui/class-wc-customer-lists-product-modal.php',
 			'ui/class-wc-customer-lists-my-account.php',
-		];
+		);
 
 		foreach ( $files as $relative_path ) {
 			$file = $base_dir . $relative_path;
@@ -96,15 +96,15 @@ final class WC_Customer_Lists {
 	 *
 	 * @since 1.0.0
 	 */
-	private function register_hooks(): void {
-		add_action( 'init', [ $this, 'register_post_types' ] );
-		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
+	private function register_hooks() {
+		add_action( 'init', array( $this, 'register_post_types' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 
 		// Instantiate components.
 		$this->init_components();
 
 		// Cron: auto-cart for ALL event lists.
-		add_action( 'wc_customer_list_auto_cart', [ 'WC_Customer_Lists_Event_List_Base', 'handle_auto_cart' ] );
+		add_action( 'wc_customer_list_auto_cart', array( 'WC_Customer_Lists_Event_List_Base', 'handle_auto_cart' ) );
 	}
 
 	/**
@@ -112,7 +112,7 @@ final class WC_Customer_Lists {
 	 *
 	 * @since 1.0.0
 	 */
-	private function init_components(): void {
+	private function init_components() {
 		// AJAX handlers (always).
 		if ( class_exists( 'WC_Customer_List_Ajax_Handlers' ) ) {
 			new WC_Customer_List_Ajax_Handlers();
@@ -123,11 +123,13 @@ final class WC_Customer_Lists {
 			new WC_Customer_Lists_Admin();
 		}
 
-		// Frontend UI (logged-in only).
+		// My Account (always load to register endpoint).
+		if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
+			new WC_Customer_Lists_My_Account();
+		}
+
+		// Product Modal (logged-in only).
 		if ( ! is_admin() && is_user_logged_in() ) {
-			if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
-				new WC_Customer_Lists_My_Account();
-			}
 			if ( class_exists( 'WC_Customer_Lists_Product_Modal' ) ) {
 				new WC_Customer_Lists_Product_Modal();
 			}
@@ -139,7 +141,7 @@ final class WC_Customer_Lists {
 	 *
 	 * @since 1.0.0
 	 */
-	public function register_post_types(): void {
+	public function register_post_types() {
 		if ( class_exists( 'WC_Customer_Lists_List_Registry' ) ) {
 			WC_Customer_Lists_List_Registry::register_post_types();
 		}
@@ -150,13 +152,13 @@ final class WC_Customer_Lists {
 	 *
 	 * @since 1.0.0
 	 */
-	public function enqueue_scripts(): void {
+	public function enqueue_scripts() {
 		// CSS.
 		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/wc-customer-lists.css';
 		wp_enqueue_style(
 			'wc-customer-lists',
 			$css_file,
-			[],
+			array(),
 			WC_CUSTOMER_LISTS_VERSION
 		);
 
@@ -165,7 +167,7 @@ final class WC_Customer_Lists {
 		wp_enqueue_script(
 			'wc-customer-lists',
 			$js_file,
-			[ 'jquery' ],
+			array( 'jquery' ),
 			WC_CUSTOMER_LISTS_VERSION,
 			true
 		);
@@ -174,10 +176,10 @@ final class WC_Customer_Lists {
 		wp_localize_script(
 			'wc-customer-lists',
 			'WCCL_Ajax',
-			[
+			array(
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
-			]
+			)
 		);
 	}
 
@@ -186,9 +188,14 @@ final class WC_Customer_Lists {
 	 *
 	 * @since 1.0.0
 	 */
-	public static function activate(): void {
+	public static function activate() {
 		if ( class_exists( 'WC_Customer_Lists_List_Registry' ) ) {
 			WC_Customer_Lists_List_Registry::register_post_types();
+		}
+		
+		// Flush rewrite rules for My Account endpoint.
+		if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
+			WC_Customer_Lists_My_Account::flush_rules();
 		}
 	}
 }
