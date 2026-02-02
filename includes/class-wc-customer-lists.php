@@ -153,10 +153,13 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	public function enqueue_scripts() {
-		// Load ONLY where needed (FIX #1).
-		if ( ! ( is_product() || is_account_page() ) ) {
-			return;
-		}
+    // Load ONLY where needed.
+    if ( ! ( is_product() || is_account_page() || is_shop() || is_product_category() || is_product_tag() ) ) {
+        return;
+    }
+
+    // Load Dashicons on frontend
+    wp_enqueue_style( 'dashicons' );
 
 		// CSS.
 		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'assets/css/wc-customer-lists.css';
