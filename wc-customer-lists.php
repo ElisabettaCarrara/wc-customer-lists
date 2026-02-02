@@ -2,19 +2,18 @@
 /**
  * Plugin Name: WC Customer Lists
  * Plugin URI:  https://elica-webservices.it/
- * Description: Allow customers to create and manage lists (wishlists, event lists, etc.) and add products to them.
+ * Description: Customer wishlists + event registries (baby, bridal) with auto-cart.
  * Version:     1.0.0
  * Author:      Elisabetta Carrara
  * Author URI:  https://elica-webservices.it/
  * Text Domain: wc-customer-lists
  * Domain Path: /languages
- *
- * Requires at least: 6.0
- * Tested up to: 6.6
- * Requires PHP: 8.2
- *
- * WC requires at least: 7.0
- * WC tested up to: 8.3
+
+ * WC requires at least: 8.0
+ * WC tested up to:      8.7
+ * Requires at least:    6.3
+ * Tested up to:         6.6
+ * Requires PHP:         8.1
  *
  * @package WC_Customer_Lists
  */
