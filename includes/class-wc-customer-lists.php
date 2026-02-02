@@ -51,22 +51,24 @@ final class WC_Customer_Lists {
 		$base_dir = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/';
 
 		$files = [
-			// Core.
-			'core/class-wc-customer-lists-list-engine.php',
+			// Core (must load first).
 			'core/class-wc-customer-lists-list-registry.php',
+			'core/class-wc-customer-lists-list-engine.php',
 
-			// Lists.
+			// List bases.
 			'lists/class-wc-customer-lists-event-list-base.php',
-			'lists/class-wc-customer-lists-generic-event-list.php',
-			'lists/class-wc-customer-lists-bridal-list.php',
-			'lists/class-wc-customer-lists-baby-list.php',
 			'lists/class-wc-customer-lists-wishlist-base.php',
+
+			// Concrete lists.
+			'lists/class-wc-customer-lists-baby-list.php',
+			'lists/class-wc-customer-lists-bridal-list.php',
+			'lists/class-wc-customer-lists-generic-event-list.php',
 			'lists/class-wc-customer-lists-wishlist.php',
 
 			// AJAX / UI.
 			'ajax/class-wc-customer-list-ajax-handlers.php',
-			'ui/class-wc-customer-lists-my-account.php',
 			'ui/class-wc-customer-lists-product-modal.php',
+			'ui/class-wc-customer-lists-my-account.php',
 		];
 
 		foreach ( $files as $relative_path ) {
@@ -74,13 +76,15 @@ final class WC_Customer_Lists {
 
 			if ( file_exists( $file ) ) {
 				require_once $file;
+			} else {
+				// Log missing for debug.
+				error_log( "WC Customer Lists: Missing file {$file}" );
 			}
 		}
 
-		// Admin-only.
+		// Admin-only (lazy load).
 		if ( is_admin() ) {
 			$admin_file = $base_dir . 'admin/class-wc-customer-lists-admin.php';
-
 			if ( file_exists( $admin_file ) ) {
 				require_once $admin_file;
 			}
@@ -99,7 +103,7 @@ final class WC_Customer_Lists {
 		// Instantiate components.
 		$this->init_components();
 
-		// Cron: auto-cart.
+		// Cron: auto-cart for ALL event lists.
 		add_action( 'wc_customer_list_auto_cart', [ 'WC_Customer_Lists_Event_List_Base', 'handle_auto_cart' ] );
 	}
 
@@ -109,23 +113,29 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	private function init_components(): void {
-		// Admin (settings page).
-		if ( is_admin() ) {
+		// AJAX handlers (always).
+		if ( class_exists( 'WC_Customer_List_Ajax_Handlers' ) ) {
+			new WC_Customer_List_Ajax_Handlers();
+		}
+
+		// Admin (settings).
+		if ( is_admin() && class_exists( 'WC_Customer_Lists_Admin' ) ) {
 			new WC_Customer_Lists_Admin();
 		}
 
-		// AJAX handlers (always - frontend + admin AJAX).
-		new WC_Customer_List_Ajax_Handlers();
-
-		// Frontend UI (product pages, my account).
+		// Frontend UI (logged-in only).
 		if ( ! is_admin() && is_user_logged_in() ) {
-			new WC_Customer_Lists_My_Account();
-			new WC_Customer_Lists_Product_Modal();
+			if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
+				new WC_Customer_Lists_My_Account();
+			}
+			if ( class_exists( 'WC_Customer_Lists_Product_Modal' ) ) {
+				new WC_Customer_Lists_Product_Modal();
+			}
 		}
 	}
 
 	/**
-	 * Register post types.
+	 * Register post types via Registry.
 	 *
 	 * @since 1.0.0
 	 */
@@ -136,26 +146,31 @@ final class WC_Customer_Lists {
 	}
 
 	/**
-	 * Enqueue frontend assets.
+	 * Enqueue frontend assets + localize data.
 	 *
 	 * @since 1.0.0
 	 */
 	public function enqueue_scripts(): void {
+		// CSS.
+		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/wc-customer-lists.css';
 		wp_enqueue_style(
 			'wc-customer-lists',
-			WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/wc-customer-lists.css',
+			$css_file,
 			[],
 			WC_CUSTOMER_LISTS_VERSION
 		);
 
+		// JS.
+		$js_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/js/wc-customer-lists.js';
 		wp_enqueue_script(
 			'wc-customer-lists',
-			WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/js/wc-customer-lists.js',
+			$js_file,
 			[ 'jquery' ],
 			WC_CUSTOMER_LISTS_VERSION,
 			true
 		);
 
+		// Nonce + AJAX data.
 		wp_localize_script(
 			'wc-customer-lists',
 			'WCCL_Ajax',
@@ -167,7 +182,7 @@ final class WC_Customer_Lists {
 	}
 
 	/**
-	 * Plugin activation callback.
+	 * Plugin activation: Register CPTs only.
 	 *
 	 * @since 1.0.0
 	 */
