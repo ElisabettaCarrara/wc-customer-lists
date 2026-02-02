@@ -1,102 +1,68 @@
 <?php
 /**
- * Abstract Wishlist.
+ * Abstract Wishlist Base.
  *
- * Base class for all wishlist types.
- * Handles core wishlist behavior.
+ * Base for simple wishlist functionality (no events/auto-cart).
  *
  * @package WC_Customer_Lists
+ * @since   1.0.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-namespace WC_Customer_Lists\Lists;
+abstract class WC_Customer_Lists_Wishlist_Base extends WC_Customer_Lists_List_Engine {
 
-use WC_Customer_Lists\Core\List_Engine;
-use WC_Customer_Lists\Core\List_Registry;
+	/**
+	 * Meta key for optional description.
+	 */
+	protected const META_DESCRIPTION = '_wishlist_description';
 
-abstract class Wishlist_Base extends List_Engine {
+	/**
+	 * Get wishlist description.
+	 */
+	public function get_description(): string {
+		return (string) get_post_meta( $this->post_id, self::META_DESCRIPTION, true );
+	}
 
-    /**
-     * Meta key for optional description or notes.
-     */
-    protected const META_DESCRIPTION = '_wishlist_description';
+	/**
+	 * Set wishlist description.
+	 */
+	public function set_description( string $description ): void {
+		update_post_meta( $this->post_id, self::META_DESCRIPTION, wp_kses_post( $description ) );
+	}
 
-    /**
-     * Get wishlist description.
-     */
-    public function get_description(): string {
-        return (string) get_post_meta( $this->post_id, self::META_DESCRIPTION, true );
-    }
+	/**
+	 * Validate wishlist constraints.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	public function validate(): void {
+		parent::validate();
 
-    /**
-     * Set wishlist description.
-     */
-    public function set_description( string $description ): void {
-        update_post_meta( $this->post_id, self::META_DESCRIPTION, wp_kses_post( $description ) );
-    }
+		// Max lists per user.
+		$limits = $this->get_limits();
+		$max_lists = (int) ( $limits['max_lists'] ?? 0 );
 
-    /**
-     * Validate wishlist constraints.
-     *
-     * E.g., enforce max per user.
-     */
-    public function validate(): void {
-        $config = List_Registry::get_list_config( $this->get_post_type() );
-        $max_per_user = $config['max_per_user'] ?? 0;
+		if ( $max_lists > 0 ) {
+			$existing = get_posts( [
+				'author'        => $this->get_owner_id(),
+				'post_type'     => static::get_post_type(),
+				'post_status'   => [ 'publish', 'private' ],
+				'numberposts'   => $max_lists + 1,
+				'fields'        => 'ids',
+				'no_found_rows' => true,
+				'exclude'       => $this->get_id(),
+			] );
 
-        if ( $max_per_user > 0 ) {
-            $user_lists = get_posts( [
-                'author'      => $this->get_owner_id(),
-                'post_type'   => $this->get_post_type(),
-                'post_status' => 'any',
-                'exclude'     => [ $this->get_id() ],
-            ] );
-
-            if ( count( $user_lists ) >= $max_per_user ) {
-                throw new \InvalidArgumentException(
-                    sprintf( 'Maximum of %d wishlist(s) allowed per user.', $max_per_user )
-                );
-            }
-        }
-    }
-
-    /**
-     * Get all items in the wishlist.
-     *
-     * This reuses List_Engine logic.
-     *
-     * @return array<int,int> product_id => quantity
-     */
-    public function get_items(): array {
-        return parent::get_items();
-    }
-
-    /**
-     * Add or update a product in the wishlist.
-     *
-     * @param int $product_id
-     * @param int $quantity
-     */
-    public function set_item( int $product_id, int $quantity = 1 ): void {
-        parent::set_item( $product_id, $quantity );
-    }
-
-    /**
-     * Remove a product from the wishlist.
-     *
-     * @param int $product_id
-     */
-    public function remove_item( int $product_id ): void {
-        parent::remove_item( $product_id );
-    }
-
-    /**
-     * Check if current user can manage this wishlist.
-     *
-     * @return bool
-     */
-    public function current_user_can_manage(): bool {
-        return parent::current_user_can_manage();
-    }
+			if ( count( $existing ) >= $max_lists ) {
+				throw new InvalidArgumentException(
+					sprintf(
+						/* translators: %d: Max wishlists allowed. */
+						__( 'Maximum of %d wishlist(s) allowed per user.', 'wc-customer-lists' ),
+						$max_lists
+					)
+				);
+			}
+		}
+	}
 }
