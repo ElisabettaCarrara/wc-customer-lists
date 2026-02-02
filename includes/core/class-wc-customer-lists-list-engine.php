@@ -2,27 +2,42 @@
 /**
  * Core List Engine abstraction.
  *
- * @package wc-customer-lists
- * @since 1.0.0
+ * Handles CRUD operations, validation, permissions for all list types.
+ *
+ * @package WC_Customer_Lists
+ * @since   1.0.0
  */
-
-namespace WC_Customer_Lists\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use WP_Post;
+abstract class WC_Customer_Lists_List_Engine {
 
-abstract class List_Engine {
-
+	/**
+	 * List post ID.
+	 *
+	 * @var int
+	 */
 	protected int $post_id;
+
+	/**
+	 * List owner user ID.
+	 *
+	 * @var int
+	 */
 	protected int $owner_id;
 
+	/**
+	 * Constructor.
+	 *
+	 * @param int $post_id List post ID.
+	 * @throws InvalidArgumentException Invalid post.
+	 */
 	public function __construct( int $post_id ) {
 		$this->post_id = $post_id;
 
 		$post = get_post( $post_id );
-		if ( ! $post instanceof WP_Post ) {
-			throw new \InvalidArgumentException( 'Invalid list post ID.' );
+		if ( ! $post || 'wp_post' !== get_class( $post ) ) {
+			throw new InvalidArgumentException( 'Invalid list post ID.' );
 		}
 
 		$this->owner_id = (int) $post->post_author;
@@ -43,11 +58,9 @@ abstract class List_Engine {
 	abstract public static function get_post_type(): string;
 
 	/**
-	 * Validate list-specific constraints.
+	 * Validate list constraints.
 	 *
-	 * Called on creation/update.
-	 *
-	 * @throws \InvalidArgumentException
+	 * @throws InvalidArgumentException
 	 */
 	public function validate(): void {
 		$items  = $this->get_items();
@@ -56,7 +69,7 @@ abstract class List_Engine {
 		$max_items = (int) ( $limits['max_items'] ?? 0 );
 
 		if ( $max_items > 0 && count( $items ) > $max_items ) {
-			throw new \InvalidArgumentException(
+			throw new InvalidArgumentException(
 				sprintf(
 					/* translators: %d: Maximum number of items allowed. */
 					__( 'This list cannot have more than %d items.', 'wc-customer-lists' ),
@@ -67,7 +80,7 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Get the list owner ID.
+	 * Get list owner ID.
 	 *
 	 * @return int
 	 */
@@ -76,7 +89,7 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Get the list ID.
+	 * Get list ID.
 	 *
 	 * @return int
 	 */
@@ -85,10 +98,11 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Get plugin settings-based limits for this list type.
+	 * Get limits from settings for this list type.
 	 *
 	 * @return array{
 	 *     max_items: int,
+	 *     max_lists: int,
 	 *     not_purchased_action: string
 	 * }
 	 */
@@ -98,17 +112,18 @@ abstract class List_Engine {
 		$limits    = $settings['list_limits'][ $post_type ] ?? [];
 
 		return [
-			'max_items'            => (int) ( $limits['max_items'] ?? 0 ),
-			'not_purchased_action' => $limits['not_purchased_action'] ?? 'keep',
+			'max_items'             => (int) ( $limits['max_items'] ?? 0 ),
+			'max_lists'             => (int) ( $limits['max_lists'] ?? 0 ),
+			'not_purchased_action'  => $limits['not_purchased_action'] ?? 'keep',
 		];
 	}
 
 	/**
-	 * Add or update a product in the list.
+	 * Add/update product in list.
 	 *
 	 * @param int $product_id Product ID.
 	 * @param int $quantity   Quantity (default 1).
-	 * @throws \InvalidArgumentException
+	 * @throws InvalidArgumentException
 	 */
 	public function set_item( int $product_id, int $quantity = 1 ): void {
 		if ( $quantity <= 0 ) {
@@ -125,7 +140,7 @@ abstract class List_Engine {
 			! isset( $items[ $product_id ] ) &&
 			count( $items ) >= $max_items
 		) {
-			throw new \InvalidArgumentException(
+			throw new InvalidArgumentException(
 				sprintf(
 					/* translators: %d: Maximum number of items allowed. */
 					__( 'This list already has the maximum allowed items (%d).', 'wc-customer-lists' ),
@@ -142,7 +157,7 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Remove a product from the list.
+	 * Remove product from list.
 	 *
 	 * @param int $product_id Product ID.
 	 */
@@ -151,9 +166,9 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Get all items in the list.
+	 * Get all items in list.
 	 *
-	 * @return array<int, int> Array of product_id => quantity.
+	 * @return array<int,int>
 	 */
 	public function get_items(): array {
 		$meta  = get_post_meta( $this->post_id );
@@ -161,8 +176,8 @@ abstract class List_Engine {
 
 		foreach ( $meta as $key => $values ) {
 			if ( str_starts_with( $key, '_item_' ) ) {
-				$product_id          = (int) str_replace( '_item_', '', $key );
-				$items[ $product_id ] = (int) $values[0];
+				$product_id             = (int) str_replace( '_item_', '', $key );
+				$items[ $product_id ]   = (int) $values[0];
 			}
 		}
 
@@ -170,7 +185,7 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Check if the current user can manage this list.
+	 * Check if current user can manage this list.
 	 *
 	 * @return bool
 	 */
@@ -185,12 +200,78 @@ abstract class List_Engine {
 	}
 
 	/**
-	 * Get the configured action for not-purchased items.
+	 * Get configured action for not-purchased items.
 	 *
 	 * @return string
 	 */
 	public function get_not_purchased_action(): string {
 		$limits = $this->get_limits();
 		return $limits['not_purchased_action'] ?? 'keep';
+	}
+
+	/**
+	 * Create new list (static factory).
+	 *
+	 * @param string $post_type List type.
+	 * @param int    $owner_id  User ID.
+	 * @param string $title     List title.
+	 * @return static
+	 * @throws InvalidArgumentException
+	 */
+	public static function create( string $post_type, int $owner_id, string $title ): static {
+		$config     = WC_Customer_Lists_List_Registry::get_list_config( $post_type );
+		$max_lists  = (int) ( $config['max_lists'] ?? 0 );
+
+		if ( $max_lists > 0 ) {
+			$existing = get_posts( [
+				'author'        => $owner_id,
+				'post_type'     => $post_type,
+				'post_status'   => [ 'publish', 'private' ],
+				'numberposts'   => $max_lists + 1,
+				'fields'        => 'ids',
+				'no_found_rows' => true,
+			] );
+
+			if ( count( $existing ) >= $max_lists ) {
+				throw new InvalidArgumentException(
+					sprintf(
+						/* translators: 1: Max lists, 2: Post type. */
+						__( 'You can only create %1$d list(s) of type "%2$s".', 'wc-customer-lists' ),
+						$max_lists,
+						$post_type
+					)
+				);
+			}
+		}
+
+		$post_id = wp_insert_post( [
+			'post_type'    => $post_type,
+			'post_status'  => 'private',
+			'post_title'   => $title,
+			'post_author'  => $owner_id,
+		], true );
+
+		if ( is_wp_error( $post_id ) ) {
+			throw new InvalidArgumentException( $post_id->get_error_message() );
+		}
+
+		/** @var static */
+		$list = new static( (int) $post_id );
+		$list->validate();
+
+		return $list;
+	}
+
+	/**
+	 * Get existing list.
+	 *
+	 * @param int $post_id List post ID.
+	 * @return static
+	 * @throws InvalidArgumentException
+	 */
+	public static function get( int $post_id ): static {
+		/** @var static */
+		$list = new static( $post_id );
+		return $list;
 	}
 }
