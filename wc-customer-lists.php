@@ -1,123 +1,199 @@
 <?php
 /**
- * Plugin Name: WC Customer Lists
- * Plugin URI:  https://elica-webservices.it/
- * Description: Allow customers to create and manage lists (wishlists, event lists, etc.) and add products to them.
- * Version:     1.0.0
- * Author:      Elisabetta Carrara
- * Author URI:  https://elica-webservices.it/
- * Text Domain: wc-customer-lists
- * Domain Path: /languages
- *
- * Requires at least: 6.0
- * Tested up to: 6.6
- * Requires PHP: 8.2
- *
- * WC requires at least: 7.0
- * WC tested up to: 8.3
- *
- * @package WC_Customer_Lists
+ * WC Customer Lists - Admin Class
+ * 
+ * Handles admin settings page, menu registration, and asset enqueuing.
+ * 
+ * @package WC_Customer_Lists\Admin
  */
+
+namespace WC_Customer_Lists\Admin;
+
+use WC_Customer_Lists\Core\List_Registry;
 
 defined( 'ABSPATH' ) || exit;
 
-/*
-|--------------------------------------------------------------------------
-| Dependency Check
-|--------------------------------------------------------------------------
-*/
+final class WC_Customer_Lists_Admin {
 
-if ( ! class_exists( 'WooCommerce' ) ) {
-	add_action(
-		'admin_notices',
-		static function (): void {
-			echo '<div class="notice notice-error"><p>';
-			esc_html_e(
-				'WC Customer Lists requires WooCommerce to be installed and active.',
-				'wc-customer-lists'
-			);
-			echo '</p></div>';
-		}
-	);
+	private const OPTION_NAME = 'wc_customer_lists_settings';
 
-	return;
-}
+	private array $settings = [];
 
-/*
-|--------------------------------------------------------------------------
-| Plugin Constants
-|--------------------------------------------------------------------------
-*/
+	public function __construct() {
+		$this->settings = get_option( self::OPTION_NAME, [] );
 
-if ( ! defined( 'WC_CUSTOMER_LISTS_VERSION' ) ) {
-	define( 'WC_CUSTOMER_LISTS_VERSION', '1.0.0' );
-}
+		add_action( 'admin_menu', [ $this, 'register_menu' ] );
+		add_action( 'admin_init', [ $this, 'register_settings' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+	}
 
-if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_FILE' ) ) {
-	define( 'WC_CUSTOMER_LISTS_PLUGIN_FILE', __FILE__ );
-}
-
-if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_DIR' ) ) {
-	define( 'WC_CUSTOMER_LISTS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-}
-
-if ( ! defined( 'WC_CUSTOMER_LISTS_PLUGIN_URL' ) ) {
-	define( 'WC_CUSTOMER_LISTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Load Core Files
-|--------------------------------------------------------------------------
-*/
-
-$main_class = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
-
-if ( ! file_exists( $main_class ) ) {
-	return;
-}
-
-require_once $main_class;
-
-/*
-|--------------------------------------------------------------------------
-| Bootstrap Plugin
-|--------------------------------------------------------------------------
-*/
-
-add_action(
-	'plugins_loaded',
-	static function (): void {
-		load_plugin_textdomain(
+	public function register_menu(): void {
+		add_menu_page(
+			__( 'Customer Lists', 'wc-customer-lists' ),
+			__( 'Customer Lists', 'wc-customer-lists' ),
+			'manage_options',
 			'wc-customer-lists',
-			false,
-			dirname( plugin_basename( WC_CUSTOMER_LISTS_PLUGIN_FILE ) ) . '/languages'
+			[ $this, 'render_settings_page' ],
+			'dashicons-heart',
+			56
+		);
+	}
+
+	public function register_settings(): void {
+		register_setting(
+			'wc_customer_lists_group',
+			self::OPTION_NAME,
+			[ $this, 'sanitize_settings' ]
 		);
 
-		WC_Customer_Lists::get_instance();
+		add_settings_section(
+			'wc_customer_lists_main',
+			__( 'Enabled List Types', 'wc-customer-lists' ),
+			static function(): void {
+				echo '<p>' . esc_html__( 'Select which list types are enabled on your site.', 'wc-customer-lists' ) . '</p>';
+			},
+			'wc_customer_lists_group'
+		);
 	}
-);
 
-/*
-|--------------------------------------------------------------------------
-| Activation / Deactivation Hooks
-|--------------------------------------------------------------------------
-*/
+	public function enqueue_assets( string $hook ): void {
+		// Only load on our settings page
+		if ( 'toplevel_page_wc-customer-lists' !== $hook ) {
+			return;
+		}
 
-register_activation_hook(
-	__FILE__,
-	static function (): void {
-		require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+		wp_enqueue_style(
+			'wc-customer-lists-admin',
+			WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/admin.css',
+			[],
+			WC_CUSTOMER_LISTS_VERSION
+		);
 
-		WC_Customer_Lists::activate();
-
-		flush_rewrite_rules();
+		wp_enqueue_script(
+			'wc-customer-lists-admin',
+			WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/js/admin.js',
+			[ 'jquery' ],
+			WC_CUSTOMER_LISTS_VERSION,
+			true
+		);
 	}
-);
 
-register_deactivation_hook(
-	__FILE__,
-	static function (): void {
-		flush_rewrite_rules();
+	public function render_settings_page(): void {
+		$enabled_lists   = $this->settings['enabled_lists'] ?? [];
+		$list_limits     = $this->settings['list_limits'] ?? [];
+		$list_configs    = List_Registry::get_enabled_list_types();
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Customer Lists Settings', 'wc-customer-lists' ); ?></h1>
+
+			<form method="post" action="options.php">
+				<?php
+				settings_fields( 'wc_customer_lists_group' );
+				do_settings_sections( 'wc_customer_lists_group' );
+				?>
+
+				<h2><?php esc_html_e( 'List Types', 'wc-customer-lists' ); ?></h2>
+				<table class="form-table">
+					<tbody>
+					<?php foreach ( $list_configs as $post_type => $config ) : ?>
+						<?php 
+						$enabled = in_array( $post_type, $enabled_lists, true );
+						$limits  = $list_limits[ $post_type ] ?? [];
+						?>
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( $post_type ); ?>">
+									<?php echo esc_html( $config['label'] ?? $post_type ); ?>
+								</label>
+							</th>
+							<td>
+								<input 
+									type="checkbox"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[enabled_lists][]"
+									id="<?php echo esc_attr( $post_type ); ?>"
+									value="<?php echo esc_attr( $post_type ); ?>"
+									<?php checked( $enabled ); ?>
+								>
+								<p class="description"><?php echo esc_html( $config['description'] ?? '' ); ?></p>
+
+								<?php if ( $enabled ) : ?>
+									<div class="wc-list-settings">
+										<p>
+											<label>
+												<?php esc_html_e( 'Max lists per user:', 'wc-customer-lists' ); ?>
+												<input 
+													type="number"
+													name="<?php echo esc_attr( self::OPTION_NAME ); ?>[list_limits][<?php echo esc_attr( $post_type ); ?>][max_lists]"
+													value="<?php echo esc_attr( $limits['max_lists'] ?? 0 ); ?>"
+													min="0" step="1">
+											</label>
+										</p>
+										<p>
+											<label>
+												<?php esc_html_e( 'Max items per list:', 'wc-customer-lists' ); ?>
+												<input 
+													type="number"
+													name="<?php echo esc_attr( self::OPTION_NAME ); ?>[list_limits][<?php echo esc_attr( $post_type ); ?>][max_items]"
+													value="<?php echo esc_attr( $limits['max_items'] ?? 0 ); ?>"
+													min="0" step="1">
+											</label>
+										</p>
+										<p>
+											<label>
+												<?php esc_html_e( 'Not purchased items:', 'wc-customer-lists' ); ?>
+												<select name="<?php echo esc_attr( self::OPTION_NAME ); ?>[list_limits][<?php echo esc_attr( $post_type ); ?>][not_purchased_action]">
+													<option value="keep" <?php selected( $limits['not_purchased_action'] ?? 'keep', 'keep' ); ?>>
+														<?php esc_html_e( 'Keep', 'wc-customer-lists' ); ?>
+													</option>
+													<option value="remove" <?php selected( $limits['not_purchased_action'] ?? 'keep', 'remove' ); ?>>
+														<?php esc_html_e( 'Remove', 'wc-customer-lists' ); ?>
+													</option>
+													<option value="purchased_only" <?php selected( $limits['not_purchased_action'] ?? 'keep', 'purchased_only' ); ?>>
+														<?php esc_html_e( 'Purchased Only', 'wc-customer-lists' ); ?>
+													</option>
+												</select>
+											</label>
+										</p>
+									</div>
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+
+				<?php submit_button(); ?>
+			</form>
+		</div>
+		<?php
 	}
-);
+
+	public function sanitize_settings( array $input ): array {
+		$output = [
+			'enabled_lists' => array_filter(
+				(array) ( $input['enabled_lists'] ?? [] ),
+				static function( $type ) use ( $input ): bool {
+					$all_types = array_keys( List_Registry::get_all_list_types() );
+					return in_array( $type, $all_types, true );
+				}
+			),
+			'list_limits'   => [],
+		];
+
+		foreach ( $output['enabled_lists'] as $type ) {
+			$settings = $input['list_limits'][ $type ] ?? [];
+
+			$output['list_limits'][ $type ] = [
+				'max_lists'            => max( 0, (int) ( $settings['max_lists'] ?? 0 ) ),
+				'max_items'            => max( 0, (int) ( $settings['max_items'] ?? 0 ) ),
+				'not_purchased_action' => in_array(
+					$settings['not_purchased_action'] ?? '',
+					[ 'keep', 'remove', 'purchased_only' ],
+					true
+				) ? $settings['not_purchased_action'] : 'keep',
+			];
+		}
+
+		return $output;
+	}
+}
