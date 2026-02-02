@@ -12,28 +12,44 @@ defined( 'ABSPATH' ) || exit;
 class WC_Customer_Lists_My_Account {
 
 	public function __construct() {
-		add_filter( 'woocommerce_account_menu_items', [ $this, 'add_my_lists_tab' ], 10, 1 );
-		add_action( 'woocommerce_account_my-lists_endpoint', [ $this, 'render_lists_page' ] );
-		add_action( 'init', [ $this, 'add_endpoint' ] );
+		add_filter( 'woocommerce_account_menu_items', array( $this, 'add_my_lists_tab' ), 10, 1 );
+		add_action( 'woocommerce_account_my-lists_endpoint', array( $this, 'render_lists_page' ) );
+		add_action( 'init', array( $this, 'add_endpoint' ) );
+		add_filter( 'query_vars', array( $this, 'add_query_vars' ), 0 );
 
 		// AJAX for inline edits.
-		add_action( 'wp_ajax_wccl_delete_list', [ $this, 'ajax_delete_list' ] );
-		add_action( 'wp_ajax_wccl_toggle_product', [ $this, 'ajax_toggle_product' ] );
+		add_action( 'wp_ajax_wccl_delete_list', array( $this, 'ajax_delete_list' ) );
+		add_action( 'wp_ajax_wccl_toggle_product', array( $this, 'ajax_toggle_product' ) );
 	}
 
 	/**
-	 * Add rewrite endpoint (NO FLUSH!).
+	 * Add rewrite endpoint.
 	 */
-	public function add_endpoint(): void {
-		add_rewrite_endpoint( 'my-lists', EP_PAGES );
-		// flush_rewrite_rules() REMOVED - handled by activation
+	public function add_endpoint() {
+		add_rewrite_endpoint( 'my-lists', EP_ROOT | EP_PAGES );
+	}
+
+	/**
+	 * Add query vars for endpoint.
+	 */
+	public function add_query_vars( $vars ) {
+		$vars[] = 'my-lists';
+		return $vars;
+	}
+
+	/**
+	 * Flush rewrite rules on activation (call this from your activation hook).
+	 */
+	public static function flush_rules() {
+		add_rewrite_endpoint( 'my-lists', EP_ROOT | EP_PAGES );
+		flush_rewrite_rules();
 	}
 
 	/**
 	 * Add tab to My Account menu.
 	 */
-	public function add_my_lists_tab( array $items ): array {
-		$new_items = [];
+	public function add_my_lists_tab( $items ) {
+		$new_items = array();
 		foreach ( $items as $key => $label ) {
 			$new_items[ $key ] = $label;
 			if ( 'orders' === $key ) {
@@ -46,7 +62,7 @@ class WC_Customer_Lists_My_Account {
 	/**
 	 * Render My Lists page.
 	 */
-	public function render_lists_page(): void {
+	public function render_lists_page() {
 		$user_id = get_current_user_id();
 		if ( ! $user_id ) {
 			echo '<p>' . esc_html__( 'Please log in to manage your lists.', 'wc-customer-lists' ) . '</p>';
@@ -82,20 +98,20 @@ class WC_Customer_Lists_My_Account {
 	/**
 	 * Get all user's lists grouped by type.
 	 */
-	private function get_user_lists( int $user_id ): array {
-		$lists = [];
+	private function get_user_lists( $user_id ) {
+		$lists = array();
 
 		$post_types = array_keys( WC_Customer_Lists_List_Registry::get_all_list_types() );
 
 		foreach ( $post_types as $post_type ) {
-			$posts = get_posts( [
+			$posts = get_posts( array(
 				'author'      => $user_id,
 				'post_type'   => $post_type,
-				'post_status' => [ 'private', 'publish' ],
+				'post_status' => array( 'private', 'publish' ),
 				'numberposts' => -1,
 				'orderby'     => 'date',
 				'order'       => 'DESC',
-			] );
+			) );
 
 			foreach ( $posts as $post ) {
 				try {
@@ -104,16 +120,16 @@ class WC_Customer_Lists_My_Account {
 						continue;
 					}
 
-					$lists[] = [
+					$lists[] = array(
 						'id'        => $post->ID,
 						'title'     => get_the_title( $post->ID ),
-						'type'      => $list::get_type(),
-						'type_label'=> ucfirst( $list::get_type() ), // Fallback
+						'type'      => $list->get_type(),
+						'type_label'=> ucfirst( $list->get_type() ), // Fallback
 						'post_type' => $post_type,
 						'count'     => count( $list->get_items() ),
 						'updated'   => get_the_modified_date( 'M j, Y', $post ),
 						'items'     => $list->get_items(),
-					];
+					);
 				} catch ( Exception $e ) {
 					// Skip invalid lists.
 				}
@@ -126,7 +142,7 @@ class WC_Customer_Lists_My_Account {
 	/**
 	 * Render single list card with products table.
 	 */
-	private function render_list_card( array $list_data ): void {
+	private function render_list_card( $list_data ) {
 		?>
 		<div class="wc-customer-lists-card">
 			<div class="wc-customer-lists-card-header">
@@ -134,7 +150,7 @@ class WC_Customer_Lists_My_Account {
 					<a href="#list-<?php echo esc_attr( $list_data['id'] ); ?>" 
 					   class="list-title"><?php echo esc_html( $list_data['title'] ); ?></a>
 					<span class="list-meta">
-						<?php echo esc_html( $list_data['type_label'] ?? ucfirst( $list_data['type'] ) ); ?> • 
+						<?php echo esc_html( isset( $list_data['type_label'] ) ? $list_data['type_label'] : ucfirst( $list_data['type'] ) ); ?> • 
 						<span class="item-count"><?php echo (int) $list_data['count']; ?></span> items • 
 						<?php echo esc_html( $list_data['updated'] ); ?>
 					</span>
@@ -162,7 +178,7 @@ class WC_Customer_Lists_My_Account {
 	/**
 	 * Render products table for list.
 	 */
-	private function render_products_table( array $list_data ): void {
+	private function render_products_table( $list_data ) {
 		if ( empty( $list_data['items'] ) ) {
 			echo '<p>' . esc_html__( 'No products yet.', 'wc-customer-lists' ) . '</p>';
 			return;
@@ -203,63 +219,63 @@ class WC_Customer_Lists_My_Account {
 	/**
 	 * AJAX: Delete entire list.
 	 */
-	public function ajax_delete_list(): void {
+	public function ajax_delete_list() {
 		check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-		$list_id = absint( $_POST['list_id'] ?? 0 );
+		$list_id = isset( $_POST['list_id'] ) ? absint( $_POST['list_id'] ) : 0;
 		$user_id = get_current_user_id();
 
 		if ( ! $list_id || ! $user_id ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
+			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ) );
 		}
 
 		try {
 			$list = WC_Customer_Lists_List_Engine::get( $list_id );
 			if ( $list->get_owner_id() !== $user_id ) {
-				wp_send_json_error( [ 'message' => __( 'Not your list.', 'wc-customer-lists' ) ] );
+				wp_send_json_error( array( 'message' => __( 'Not your list.', 'wc-customer-lists' ) ) );
 			}
 
 			wp_delete_post( $list_id, true );
 
-			wp_send_json_success( [ 
+			wp_send_json_success( array( 
 				'message' => __( 'List deleted.', 'wc-customer-lists' ),
 				'list_id' => $list_id 
-			] );
+			) );
 		} catch ( Exception $e ) {
-			wp_send_json_error( [ 'message' => $e->getMessage() ] );
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
 		}
 	}
 
 	/**
 	 * AJAX: Remove product from list.
 	 */
-	public function ajax_toggle_product(): void {
+	public function ajax_toggle_product() {
 		check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-		$list_id    = absint( $_POST['list_id'] ?? 0 );
-		$product_id = absint( $_POST['product_id'] ?? 0 );
+		$list_id    = isset( $_POST['list_id'] ) ? absint( $_POST['list_id'] ) : 0;
+		$product_id = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
 		$user_id    = get_current_user_id();
 
 		if ( ! $list_id || ! $product_id || ! $user_id ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
+			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ) );
 		}
 
 		try {
 			$list = WC_Customer_Lists_List_Engine::get( $list_id );
 			if ( $list->get_owner_id() !== $user_id ) {
-				wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
+				wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ) );
 			}
 
 			$list->remove_item( $product_id );
 
-			wp_send_json_success( [
+			wp_send_json_success( array(
 				'message'    => __( 'Product removed.', 'wc-customer-lists' ),
 				'list_id'    => $list_id,
 				'product_id' => $product_id,
 				'item_count' => count( $list->get_items() ),
-			] );
+			) );
 		} catch ( Exception $e ) {
-			wp_send_json_error( [ 'message' => $e->getMessage() ] );
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
 		}
 	}
 }
