@@ -19,8 +19,8 @@ class WC_Customer_Lists_List_Registry {
 	 *     class: string,
 	 *     label: string,
 	 *     description: string,
-	 *     supports_events: bool,
-	 *     supports_auto_cart: bool
+	 *     supports_events: boolean,
+	 *     supports_auto_cart: boolean
 	 * }>
 	 */
 	protected static array $list_types = [
