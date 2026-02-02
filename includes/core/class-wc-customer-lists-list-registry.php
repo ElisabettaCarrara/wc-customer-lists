@@ -17,6 +17,8 @@ class WC_Customer_Lists_List_Registry {
 	 *
 	 * @var array<string,array{
 	 *     class: string,
+	 *     label: string,
+	 *     description: string,
 	 *     supports_events: bool,
 	 *     supports_auto_cart: bool
 	 * }>
@@ -24,21 +26,29 @@ class WC_Customer_Lists_List_Registry {
 	protected static array $list_types = [
 		'wc_bridal_list' => [
 			'class'              => 'WC_Customer_Lists_Bridal_List',
+			'label'              => __( 'Bridal/Wedding List', 'wc-customer-lists' ),
+			'description'        => __( 'Wedding registry lists.', 'wc-customer-lists' ),
 			'supports_events'    => true,
 			'supports_auto_cart' => true,
 		],
 		'wc_baby_list' => [
 			'class'              => 'WC_Customer_Lists_Baby_List',
+			'label'              => __( 'Baby List', 'wc-customer-lists' ),
+			'description'        => __( 'Baby registry lists.', 'wc-customer-lists' ),
 			'supports_events'    => true,
 			'supports_auto_cart' => true,
 		],
 		'wc_event_list' => [
 			'class'              => 'WC_Customer_Lists_Generic_Event_List',
+			'label'              => __( 'Event List', 'wc-customer-lists' ),
+			'description'        => __( 'Generic event registry lists.', 'wc-customer-lists' ),
 			'supports_events'    => true,
 			'supports_auto_cart' => true,
 		],
 		'wc_wishlist' => [
 			'class'              => 'WC_Customer_Lists_Wishlist',
+			'label'              => __( 'Wishlist', 'wc-customer-lists' ),
+			'description'        => __( 'Simple product wishlists.', 'wc-customer-lists' ),
 			'supports_events'    => false,
 			'supports_auto_cart' => false,
 		],
@@ -93,7 +103,7 @@ class WC_Customer_Lists_List_Registry {
 	}
 
 	/**
-	 * Get list configuration merged with settings.
+	 * Get list configuration merged with settings limits.
 	 *
 	 * @since 1.0.0
 	 * @param string $post_type List CPT.
@@ -108,9 +118,14 @@ class WC_Customer_Lists_List_Registry {
 		$settings = get_option( 'wc_customer_lists_settings', [] );
 		$limits   = $settings['list_limits'][ $post_type ] ?? [];
 
+		// Merge limits.
 		$config['max_lists']             = (int) ( $limits['max_lists'] ?? 0 );
 		$config['max_items']             = (int) ( $limits['max_items'] ?? 0 );
-		$config['not_purchased_action']  = $limits['not_purchased_action'] ?? 'keep';
+		$config['not_purchased_action']  = in_array( 
+			$limits['not_purchased_action'] ?? 'keep', 
+			[ 'keep', 'remove', 'purchased_only' ], 
+			true 
+		) ? $limits['not_purchased_action'] : 'keep';
 
 		return $config;
 	}
@@ -136,12 +151,22 @@ class WC_Customer_Lists_List_Registry {
 	}
 
 	/**
-	 * Get max lists per user from settings.
+	 * Get max lists per user from config.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function get_max_per_user( string $post_type ): int {
 		$config = self::get_list_config( $post_type );
 		return (int) ( $config['max_lists'] ?? 0 );
+	}
+
+	/**
+	 * Get max items per list from config.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function get_max_per_list( string $post_type ): int {
+		$config = self::get_list_config( $post_type );
+		return (int) ( $config['max_items'] ?? 0 );
 	}
 }
