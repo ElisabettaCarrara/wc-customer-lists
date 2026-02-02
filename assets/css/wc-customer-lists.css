@@ -1,4 +1,84 @@
 /* ===============================
+   Add to List Buttons
+   =============================== */
+
+/* Wrapper for title + button on loop/archive pages */
+.wc-customer-lists-title-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+/* Loop/archive button (icon only) */
+.wc-customer-lists-add-btn.wc-customer-lists-loop {
+    background: transparent !important;
+    border: none !important;
+    padding: 4px !important;
+    cursor: pointer;
+    flex-shrink: 0;
+    line-height: 1;
+    margin: 0 !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+}
+
+.wc-customer-lists-add-btn.wc-customer-lists-loop .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #999;
+    transition: color 0.2s ease;
+}
+
+.wc-customer-lists-add-btn.wc-customer-lists-loop:hover .dashicons,
+.wc-customer-lists-add-btn.wc-customer-lists-loop:focus .dashicons {
+    color: #e74c3c;
+}
+
+/* Single product button (icon + text) */
+.wc-customer-lists-add-btn.wc-customer-lists-single {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 !important;
+    padding: 10px 20px !important;
+    background: #f5f5f5 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+}
+
+.wc-customer-lists-add-btn.wc-customer-lists-single .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #999;
+    transition: color 0.2s ease;
+}
+
+.wc-customer-lists-add-btn.wc-customer-lists-single:hover,
+.wc-customer-lists-add-btn.wc-customer-lists-single:focus {
+    background: #fff !important;
+    border-color: #e74c3c !important;
+}
+
+.wc-customer-lists-add-btn.wc-customer-lists-single:hover .dashicons,
+.wc-customer-lists-add-btn.wc-customer-lists-single:focus .dashicons {
+    color: #e74c3c;
+}
+
+.wc-customer-lists-add-btn.wc-customer-lists-single .btn-text {
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* ===============================
    WC Customer Lists Modal
    =============================== */
 .wc-customer-lists-modal {
@@ -14,6 +94,9 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease-in-out;
+    border: none;
+    padding: 0;
+    background: transparent;
 }
 
 .wc-customer-lists-modal[open] {
@@ -65,6 +148,7 @@
 .wc-customer-lists-modal h2 {
     font-size: 1.5em;
     margin-bottom: 1em;
+    margin-top: 0;
 }
 
 .wc-customer-lists-modal-content {
@@ -111,7 +195,7 @@
     gap: 0.5em;
 }
 
-.modal-close-btn {
+.wc-customer-lists-modal .modal-close-btn {
     position: absolute;
     top: 0.5em;
     right: 0.5em;
@@ -125,12 +209,12 @@
     transition: color 0.2s ease;
 }
 
-.modal-close-btn:hover {
+.wc-customer-lists-modal .modal-close-btn:hover {
     color: #000;
 }
 
-.modal-submit-btn {
-    background-color: #96588a; /* WooCommerce purple-ish */
+.wc-customer-lists-modal .modal-submit-btn {
+    background-color: #96588a;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -140,16 +224,8 @@
     transition: background 0.2s ease-in-out;
 }
 
-.modal-submit-btn:hover {
+.wc-customer-lists-modal .modal-submit-btn:hover {
     background-color: #82366f;
-}
-
-/* Responsive adjustments */
-@media (max-width: 600px) {
-    .wc-customer-lists-modal-wrapper {
-        margin: 10% 1em;
-        padding: 1em;
-    }
 }
 
 /* ===============================
@@ -178,29 +254,30 @@
     font-size: 1.3em;
 }
 
-.list-meta {
+.wc-customer-lists-card .list-meta {
     color: #666;
     font-size: 0.9em;
 }
 
-.list-actions {
+.wc-customer-lists-card .list-actions {
     display: flex;
     gap: 0.5em;
     flex-wrap: wrap;
 }
 
-.toggle-list, .delete-list {
+.wc-customer-lists-card .toggle-list,
+.wc-customer-lists-card .delete-list {
     font-size: 0.85em;
     padding: 0.4em 0.8em;
 }
 
-.delete-list {
+.wc-customer-lists-card .delete-list {
     background: #d63638;
     color: white;
     border-color: #d63638;
 }
 
-.delete-list:hover {
+.wc-customer-lists-card .delete-list:hover {
     background: #c32d2f;
 }
 
@@ -232,14 +309,14 @@
     background: #f8f9fa;
 }
 
-.remove-item {
+.woocommerce-table--lists .remove-item {
     background: #d63638;
     color: white !important;
     border-color: #d63638;
     font-size: 0.8em;
 }
 
-.remove-item:hover {
+.woocommerce-table--lists .remove-item:hover {
     background: #c32d2f !important;
 }
 
@@ -261,11 +338,11 @@
     animation: wccl-slideIn 0.3s ease-out;
 }
 
-.wccl-success {
+.wccl-notification.wccl-success {
     background: #00a32a;
 }
 
-.wccl-error {
+.wccl-notification.wccl-error {
     background: #d63638;
 }
 
@@ -307,7 +384,7 @@
         align-items: stretch;
     }
     
-    .list-actions {
+    .wc-customer-lists-card .list-actions {
         justify-content: flex-end;
     }
     
@@ -327,5 +404,8 @@
         right: 20px;
         max-width: none;
     }
+    
+    .wc-customer-lists-add-btn.wc-customer-lists-single .btn-text {
+        font-size: 13px;
+    }
 }
-
