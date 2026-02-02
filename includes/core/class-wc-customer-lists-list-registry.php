@@ -2,7 +2,7 @@
 /**
  * List Registry.
  *
- * Registers list types and CPTs and acts as a factory for list objects.
+ * Registers list types and CPTs. Provides configuration lookup.
  *
  * @package WC_Customer_Lists
  * @since   1.0.0
@@ -15,30 +15,34 @@ class WC_Customer_Lists_List_Registry {
 	/**
 	 * Registered list types.
 	 *
-	 * @var array<string,array<string,mixed>>
+	 * @var array<string,array{
+	 *     class: string,
+	 *     supports_events: bool,
+	 *     supports_auto_cart: bool
+	 * }>
 	 */
-	protected static array $list_types = array(
-		'wc_bridal_list' => array(
+	protected static array $list_types = [
+		'wc_bridal_list' => [
 			'class'              => 'WC_Customer_Lists_Bridal_List',
 			'supports_events'    => true,
 			'supports_auto_cart' => true,
-		),
-		'wc_baby_list' => array(
+		],
+		'wc_baby_list' => [
 			'class'              => 'WC_Customer_Lists_Baby_List',
 			'supports_events'    => true,
 			'supports_auto_cart' => true,
-		),
-		'wc_event_list' => array(
+		],
+		'wc_event_list' => [
 			'class'              => 'WC_Customer_Lists_Generic_Event_List',
 			'supports_events'    => true,
 			'supports_auto_cart' => true,
-		),
-		'wc_wishlist' => array(
+		],
+		'wc_wishlist' => [
 			'class'              => 'WC_Customer_Lists_Wishlist',
 			'supports_events'    => false,
 			'supports_auto_cart' => false,
-		),
-	);
+		],
+	];
 
 	/**
 	 * Register all list CPTs.
@@ -61,18 +65,48 @@ class WC_Customer_Lists_List_Registry {
 	}
 
 	/**
-	 * Get list configuration merged with settings.
+	 * Get all registered list types.
 	 *
 	 * @since 1.0.0
 	 */
+	public static function get_all_list_types(): array {
+		return self::$list_types;
+	}
+
+	/**
+	 * Get enabled list types from settings.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function get_enabled_list_types(): array {
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$enabled  = $settings['enabled_lists'] ?? [];
+
+		$enabled_types = [];
+		foreach ( $enabled as $post_type ) {
+			if ( isset( self::$list_types[ $post_type ] ) ) {
+				$enabled_types[ $post_type ] = self::$list_types[ $post_type ];
+			}
+		}
+
+		return $enabled_types;
+	}
+
+	/**
+	 * Get list configuration merged with settings.
+	 *
+	 * @since 1.0.0
+	 * @param string $post_type List CPT.
+	 * @return array<string,mixed>
+	 */
 	public static function get_list_config( string $post_type ): array {
 		if ( ! isset( self::$list_types[ $post_type ] ) ) {
-			return array();
+			return [];
 		}
 
 		$config   = self::$list_types[ $post_type ];
-		$settings = get_option( 'wc_customer_lists_settings', array() );
-		$limits   = $settings['list_limits'][ $post_type ] ?? array();
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$limits   = $settings['list_limits'][ $post_type ] ?? [];
 
 		$config['max_lists']             = (int) ( $limits['max_lists'] ?? 0 );
 		$config['max_items']             = (int) ( $limits['max_items'] ?? 0 );
@@ -102,7 +136,7 @@ class WC_Customer_Lists_List_Registry {
 	}
 
 	/**
-	 * Get max lists per user.
+	 * Get max lists per user from settings.
 	 *
 	 * @since 1.0.0
 	 */
