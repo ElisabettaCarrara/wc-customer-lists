@@ -73,7 +73,9 @@ class WC_Customer_Lists_My_Account {
 
 		if ( empty( $lists ) ) {
 			echo '<div class="woocommerce-message woocommerce-info">';
-			echo '<p>' . esc_html__( 'No lists yet. Create one from any product page!', 'wc-customer-lists' ) . '</p>';
+			echo '<p><strong>' . esc_html__( 'You don\'t have any lists yet.', 'wc-customer-lists' ) . '</strong></p>';
+			echo '<p>' . esc_html__( 'Start building your wishlist or registry by visiting any product page and clicking the "Add to List" button.', 'wc-customer-lists' ) . '</p>';
+			echo '<p><a href="' . esc_url( wc_get_page_permalink( 'shop' ) ) . '" class="button">' . esc_html__( 'Browse Products', 'wc-customer-lists' ) . '</a></p>';
 			echo '</div>';
 			return;
 		}
