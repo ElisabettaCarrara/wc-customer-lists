@@ -2,165 +2,156 @@
 /**
  * AJAX Handlers for WC Customer Lists.
  *
+ * Product → list add UI + API layer.
+ *
  * @package WC_Customer_Lists
  */
 
 defined( 'ABSPATH' ) || exit;
 
-namespace WC_Customer_Lists\Ajax;
+final class WC_Customer_List_Ajax_Handlers {
 
-use WC_Customer_Lists\Core\List_Registry;
-use WC_Customer_Lists\Lists\Event_List;
-use InvalidArgumentException;
+	private array $settings = [];
 
-final class Ajax_Handlers {
+	public function __construct() {
+		$this->settings = get_option( 'wc_customer_lists_settings', [] );
 
-    private array $settings = [];
+		add_action( 'wp_ajax_wccl_get_user_lists', [ $this, 'get_user_lists' ] );
+		add_action( 'wp_ajax_wccl_add_product_to_list', [ $this, 'add_product_to_list' ] );
+	}
 
-    public function __construct() {
-        $this->settings = get_option( 'wc_customer_lists_settings', [] );
+	/**
+	 * AJAX: Get dropdown of user's enabled lists.
+	 */
+	public function get_user_lists(): void {
+		check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-        add_action( 'wp_ajax_wccl_get_user_lists', [ $this, 'get_user_lists' ] );
-        add_action( 'wp_ajax_wccl_add_product_to_list', [ $this, 'add_product_to_list' ] );
-    }
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			wp_send_json_error( [ 'message' => __( 'Not logged in.', 'wc-customer-lists' ) ] );
+		}
 
-    /**
-     * Fetch lists for the current user, only enabled ones.
-     */
-    public function get_user_lists(): void {
-        check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
+		$enabled_lists = $this->settings['enabled_lists'] ?? [];
+		if ( empty( $enabled_lists ) ) {
+			wp_send_json_success( [ 'html' => '<p>' . esc_html__( 'No list types enabled.', 'wc-customer-lists' ) . '</p>' ] );
+		}
 
-        $user_id = get_current_user_id();
+		$lists = [];
+		foreach ( $enabled_lists as $post_type ) {
+			if ( ! WC_Customer_Lists_List_Registry::get_list_config( $post_type ) ) {
+				continue;
+			}
 
-        if ( ! $user_id ) {
-            wp_send_json_error( [ 'message' => __( 'Not logged in.', 'wc-customer-lists' ) ] );
-        }
+			$config = WC_Customer_Lists_List_Registry::$list_types[ $post_type ] ?? [];
+			$posts  = get_posts( [
+				'author'      => $user_id,
+				'post_type'   => $post_type,
+				'post_status' => 'private',
+				'numberposts' => -1,
+			] );
 
-        $enabled_lists = $this->settings['enabled_lists'] ?? [];
-        if ( empty( $enabled_lists ) ) {
-            wp_send_json_success( [ 'html' => '<p>' . esc_html__( 'No list types are enabled.', 'wc-customer-lists' ) . '</p>' ] );
-        }
+			foreach ( $posts as $post ) {
+				$lists[] = [
+					'id'              => $post->ID,
+					'title'           => get_the_title( $post->ID ),
+					'post_type'       => $post_type,
+					'supports_events' => ! empty( $config['supports_events'] ),
+				];
+			}
+		}
 
-        $lists = [];
+		if ( empty( $lists ) ) {
+			wp_send_json_success( [
+				'html' => '<p>' . esc_html__( 'No lists found. Create one first!', 'wc-customer-lists' ) . '</p>',
+			] );
+		}
 
-        foreach ( $enabled_lists as $post_type ) {
-            if ( ! isset( List_Registry::$list_types[ $post_type ] ) ) {
-                continue;
-            }
+		ob_start();
+		?>
+		<label for="wc_list_id"><?php esc_html_e( 'Select a list:', 'wc-customer-lists' ); ?></label>
+		<select name="wc_list_id" id="wc_list_id">
+			<?php foreach ( $lists as $list ) : ?>
+				<option value="<?php echo esc_attr( $list['id'] ); ?>"
+						data-supports-events="<?php echo esc_attr( $list['supports_events'] ? '1' : '0' ); ?>">
+					<?php echo esc_html( $list['title'] ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<div id="wc_event_fields_container"></div>
+		<?php
+		wp_send_json_success( [ 'html' => ob_get_clean() ] );
+	}
 
-            $config = List_Registry::$list_types[ $post_type ];
+	/**
+	 * AJAX: Add product to list (create OR append).
+	 */
+	public function add_product_to_list(): void {
+		check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-            $posts = get_posts( [
-                'author'      => $user_id,
-                'post_type'   => $post_type,
-                'post_status' => 'private',
-                'numberposts' => -1,
-            ] );
+		$user_id    = get_current_user_id();
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		$list_id    = absint( $_POST['list_id'] ?? 0 );
+		$event_data = $_POST['event_data'] ?? [];
 
-            foreach ( $posts as $post ) {
-                $lists[] = [
-                    'id'              => $post->ID,
-                    'title'           => get_the_title( $post ),
-                    'post_type'       => $post_type,
-                    'supports_events' => ! empty( $config['supports_events'] ),
-                ];
-            }
-        }
+		if ( ! $user_id || ! $product_id ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
+		}
 
-        if ( empty( $lists ) ) {
-            wp_send_json_success( [
-                'html' => '<p>' . esc_html__( 'No lists found.', 'wc-customer-lists' ) . '</p>',
-            ] );
-        }
+		try {
+			if ( $list_id ) {
+				// Add to existing list.
+				$list = WC_Customer_Lists_List_Engine::get( $list_id );
 
-        ob_start();
-        ?>
-        <label for="wc_list_id"><?php esc_html_e( 'Select a list', 'wc-customer-lists' ); ?></label>
-        <select name="wc_list_id" id="wc_list_id">
-            <?php foreach ( $lists as $list ) : ?>
-                <option
-                    value="<?php echo esc_attr( $list['id'] ); ?>"
-                    data-supports-events="<?php echo esc_attr( $list['supports_events'] ? '1' : '0' ); ?>">
-                    <?php echo esc_html( $list['title'] ); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-        <div id="wc_event_fields_container"></div>
-        <?php
+				// Enabled list type check.
+				$enabled_lists = $this->settings['enabled_lists'] ?? [];
+				if ( ! in_array( $list->get_post_type(), $enabled_lists, true ) ) {
+					wp_send_json_error( [ 'message' => __( 'List type disabled.', 'wc-customer-lists' ) ] );
+				}
 
-        wp_send_json_success( [ 'html' => ob_get_clean() ] );
-    }
+				// Ownership.
+				if ( $list->get_owner_id() !== $user_id ) {
+					wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
+				}
+			} else {
+				// CREATE new list.
+				$post_type  = sanitize_key( $_POST['post_type'] ?? '' );
+				$list_title = sanitize_text_field( $_POST['list_title'] ?? '' );
 
-    /**
-     * Add product to a list via AJAX.
-     */
-    public function add_product_to_list(): void {
-        check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
+				if ( ! $post_type || ! $list_title ) {
+					throw new InvalidArgumentException( __( 'Missing list details.', 'wc-customer-lists' ) );
+				}
 
-        $user_id    = get_current_user_id();
-        $product_id = absint( $_POST['product_id'] ?? 0 );
-        $list_id    = absint( $_POST['list_id'] ?? 0 );
-        $event_data = $_POST['event_data'] ?? [];
+				$list = WC_Customer_Lists_List_Engine::create( $post_type, $user_id, $list_title );
+			}
 
-        if ( ! $user_id || ! $product_id || ! $list_id ) {
-            wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
-        }
+			// Event fields (if Event_List_Base).
+			if ( $list instanceof WC_Customer_Lists_Event_List_Base ) {
+				$allowed_fields = [
+					'event_name',
+					'event_date', 
+					'closing_date',
+					'delivery_deadline',
+				];
 
-        try {
-            $list = List_Registry::get( $list_id );
+				foreach ( $allowed_fields as $field ) {
+					if ( ! empty( $event_data[ $field ] ) ) {
+						$list->{"set_{$field}"}( sanitize_text_field( $event_data[ $field ] ) );
+					}
+				}
+			}
 
-            // Only allow enabled list types
-            $enabled_lists = $this->settings['enabled_lists'] ?? [];
-            if ( ! in_array( $list->get_post_type(), $enabled_lists, true ) ) {
-                wp_send_json_error( [ 'message' => __( 'This list type is disabled.', 'wc-customer-lists' ) ] );
-            }
+			// Core operation - throws if limits exceeded.
+			$list->set_item( $product_id );
 
-            // Ownership check
-            if ( $list->get_owner_id() !== $user_id ) {
-                wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
-            }
+			wp_send_json_success( [
+				'message' => __( 'Product added successfully!', 'wc-customer-lists' ),
+				'list_id' => $list->get_id(),
+			] );
 
-            // Validate event data (if applicable)
-            if ( $list instanceof Event_List ) {
-                $allowed_fields = [
-                    'event_name',
-                    'event_date',
-                    'closing_date',
-                    'delivery_deadline',
-                ];
-
-                foreach ( $allowed_fields as $field ) {
-                    if ( empty( $event_data[ $field ] ) ) {
-                        wp_send_json_error([
-                            'message' => sprintf(
-                                __( 'Missing required field: %s', 'wc-customer-lists' ),
-                                esc_html( $field )
-                            ),
-                        ]);
-                    }
-
-                    update_post_meta(
-                        $list_id,
-                        '_' . $field,
-                        sanitize_text_field( $event_data[ $field ] )
-                    );
-                }
-            }
-
-            // 〽️ Delegate max-items enforcement to List_Engine
-            $list->set_item( $product_id );
-
-            wp_send_json_success( [
-                'message' => __( 'Product added to list.', 'wc-customer-lists' ),
-            ] );
-
-        } catch ( InvalidArgumentException $e ) {
-            wp_send_json_error( [ 'message' => $e->getMessage() ] );
-        } catch ( \Throwable $e ) {
-            wp_send_json_error( [ 'message' => __( 'An unexpected error occurred.', 'wc-customer-lists' ) ] );
-        }
-    }
+		} catch ( InvalidArgumentException $e ) {
+			wp_send_json_error( [ 'message' => $e->getMessage() ] );
+		} catch ( Throwable $e ) {
+			wp_send_json_error( [ 'message' => __( 'Server error occurred.', 'wc-customer-lists' ) ] );
+		}
+	}
 }
-
-// Bootstrap
-new Ajax_Handlers();
