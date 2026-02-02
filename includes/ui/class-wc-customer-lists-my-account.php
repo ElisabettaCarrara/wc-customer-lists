@@ -22,11 +22,11 @@ class WC_Customer_Lists_My_Account {
 	}
 
 	/**
-	 * Add rewrite endpoint.
+	 * Add rewrite endpoint (NO FLUSH!).
 	 */
 	public function add_endpoint(): void {
 		add_rewrite_endpoint( 'my-lists', EP_PAGES );
-		flush_rewrite_rules(); // Only once, production: remove or conditional
+		// flush_rewrite_rules() REMOVED - handled by activation
 	}
 
 	/**
@@ -64,6 +64,16 @@ class WC_Customer_Lists_My_Account {
 
 		echo '<h2>' . esc_html__( 'My Lists', 'wc-customer-lists' ) . ' <small>(' . count( $lists ) . ')</small></h2>';
 
+		// JS data for AJAX handlers.
+		?>
+		<script>
+		window.WCCL_MyAccount = {
+			ajax_url: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+			nonce: '<?php echo esc_js( wp_create_nonce( 'wc_customer_lists_nonce' ) ); ?>'
+		};
+		</script>
+		<?php
+
 		foreach ( $lists as $list_data ) {
 			$this->render_list_card( $list_data );
 		}
@@ -75,7 +85,6 @@ class WC_Customer_Lists_My_Account {
 	private function get_user_lists( int $user_id ): array {
 		$lists = [];
 
-		// All possible post types from Registry.
 		$post_types = array_keys( WC_Customer_Lists_List_Registry::get_all_list_types() );
 
 		foreach ( $post_types as $post_type ) {
@@ -99,6 +108,7 @@ class WC_Customer_Lists_My_Account {
 						'id'        => $post->ID,
 						'title'     => get_the_title( $post->ID ),
 						'type'      => $list::get_type(),
+						'type_label'=> ucfirst( $list::get_type() ), // Fallback
 						'post_type' => $post_type,
 						'count'     => count( $list->get_items() ),
 						'updated'   => get_the_modified_date( 'M j, Y', $post ),
@@ -124,8 +134,8 @@ class WC_Customer_Lists_My_Account {
 					<a href="#list-<?php echo esc_attr( $list_data['id'] ); ?>" 
 					   class="list-title"><?php echo esc_html( $list_data['title'] ); ?></a>
 					<span class="list-meta">
-						<?php echo esc_html( ucfirst( $list_data['type'] ) ); ?> • 
-						<?php echo (int) $list_data['count']; ?> items • 
+						<?php echo esc_html( $list_data['type_label'] ?? ucfirst( $list_data['type'] ) ); ?> • 
+						<span class="item-count"><?php echo (int) $list_data['count']; ?></span> items • 
 						<?php echo esc_html( $list_data['updated'] ); ?>
 					</span>
 				</h3>
@@ -168,15 +178,17 @@ class WC_Customer_Lists_My_Account {
 
 		foreach ( $list_data['items'] as $product_id => $qty ) {
 			$product = wc_get_product( $product_id );
-			if ( ! $product ) continue;
+			if ( ! $product ) {
+				continue;
+			}
 
-			echo '<tr>';
+			echo '<tr data-product-id="' . esc_attr( $product_id ) . '" data-list-id="' . esc_attr( $list_data['id'] ) . '">';
 			echo '<td>';
 			echo $product->get_image( 'thumbnail' );
-			echo '<strong>' . $product->get_name() . '</strong>';
+			echo '<strong>' . esc_html( $product->get_name() ) . '</strong>';
 			echo '<br><small>' . $product->get_price_html() . '</small>';
 			echo '</td>';
-			echo '<td>' . esc_html( $qty ) . '</td>';
+			echo '<td class="qty">' . esc_html( $qty ) . '</td>';
 			echo '<td>';
 			echo '<button class="button remove-item" data-list-id="' . esc_attr( $list_data['id'] ) . '" data-product-id="' . esc_attr( $product_id ) . '">';
 			echo esc_html__( 'Remove', 'wc-customer-lists' );
@@ -198,7 +210,7 @@ class WC_Customer_Lists_My_Account {
 		$user_id = get_current_user_id();
 
 		if ( ! $list_id || ! $user_id ) {
-			wp_send_json_error();
+			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
 		}
 
 		try {
@@ -207,46 +219,44 @@ class WC_Customer_Lists_My_Account {
 				wp_send_json_error( [ 'message' => __( 'Not your list.', 'wc-customer-lists' ) ] );
 			}
 
-			wp_delete_post( $list_id, true ); // Force delete.
+			wp_delete_post( $list_id, true );
 
-			wp_send_json_success( [ 'message' => __( 'List deleted.', 'wc-customer-lists' ) ] );
+			wp_send_json_success( [ 
+				'message' => __( 'List deleted.', 'wc-customer-lists' ),
+				'list_id' => $list_id 
+			] );
 		} catch ( Exception $e ) {
 			wp_send_json_error( [ 'message' => $e->getMessage() ] );
 		}
 	}
 
 	/**
-	 * AJAX: Toggle product in list (add/remove).
+	 * AJAX: Remove product from list.
 	 */
 	public function ajax_toggle_product(): void {
 		check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-		$list_id     = absint( $_POST['list_id'] ?? 0 );
-		$product_id  = absint( $_POST['product_id'] ?? 0 );
-		$remove      = (bool) $_POST['remove'] ?? false;
-		$user_id     = get_current_user_id();
+		$list_id    = absint( $_POST['list_id'] ?? 0 );
+		$product_id = absint( $_POST['product_id'] ?? 0 );
+		$user_id    = get_current_user_id();
 
 		if ( ! $list_id || ! $product_id || ! $user_id ) {
-			wp_send_json_error();
+			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
 		}
 
 		try {
 			$list = WC_Customer_Lists_List_Engine::get( $list_id );
 			if ( $list->get_owner_id() !== $user_id ) {
-				wp_send_json_error();
+				wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
 			}
 
-			if ( $remove ) {
-				$list->remove_item( $product_id );
-				$message = __( 'Product removed.', 'wc-customer-lists' );
-			} else {
-				$list->set_item( $product_id, 1 );
-				$message = __( 'Product added.', 'wc-customer-lists' );
-			}
+			$list->remove_item( $product_id );
 
 			wp_send_json_success( [
-				'message'     => $message,
-				'item_count'  => count( $list->get_items() ),
+				'message'    => __( 'Product removed.', 'wc-customer-lists' ),
+				'list_id'    => $list_id,
+				'product_id' => $product_id,
+				'item_count' => count( $list->get_items() ),
 			] );
 		} catch ( Exception $e ) {
 			wp_send_json_error( [ 'message' => $e->getMessage() ] );
