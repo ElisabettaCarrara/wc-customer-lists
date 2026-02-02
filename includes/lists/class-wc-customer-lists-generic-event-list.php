@@ -1,78 +1,85 @@
 <?php
 /**
- * Generic Event List.
+ * Generic Event List Concrete.
  *
- * Concrete class for user-configurable event-based lists.
+ * User-configurable generic event lists.
  *
  * @package WC_Customer_Lists
+ * @since   1.0.0
  */
 
 defined( 'ABSPATH' ) || exit;
 
-namespace WC_Customer_Lists\Lists;
+class WC_Customer_Lists_Generic_Event_List extends WC_Customer_Lists_Event_List_Base {
 
-use WC_Customer_Lists\Core\List_Registry;
+	/**
+	 * Constructor - auto-sets event type.
+	 *
+	 * @param int $post_id List post ID.
+	 */
+	public function __construct( int $post_id ) {
+		parent::__construct( $post_id );
 
-class Generic_Event_List extends Event_List {
+		if ( empty( $this->get_event_type() ) ) {
+			$this->set_event_type( 'generic' );
+		}
+	}
 
-    /**
-     * Constructor.
-     *
-     * Sets the event type to 'generic' automatically.
-     *
-     * @param int $post_id List post ID
-     */
-    public function __construct( int $post_id ) {
-        parent::__construct( $post_id );
+	/**
+	 * List type identifier.
+	 */
+	public static function get_type(): string {
+		return 'generic';
+	}
 
-        // Set event type if not already set
-        if ( ! $this->get_event_type() ) {
-            $this->set_event_type( 'generic' );
-        }
-    }
+	/**
+	 * Post type slug.
+	 */
+	public static function get_post_type(): string {
+		return 'wc_event_list';
+	}
 
-    /**
-     * Provide CPT registration args.
-     *
-     * @return array CPT args
-     */
-    public static function get_post_type_args(): array {
-        return [
-            'label'               => __( 'Event Lists', 'wc-customer-lists' ),
-            'public'              => true,
-            'show_ui'             => true,
-            'show_in_menu'        => true,
-            'capability_type'     => 'post',
-            'supports'            => [ 'title', 'editor', 'author' ],
-            'has_archive'         => false,
-            'show_in_rest'        => true,
-        ];
-    }
+	/**
+	 * CPT registration args.
+	 */
+	public static function get_post_type_args(): array {
+		return [
+			'label'                 => __( 'Event Lists', 'wc-customer-lists' ),
+			'labels'                => [
+				'name'          => __( 'Event Lists', 'wc-customer-lists' ),
+				'singular_name' => __( 'Event List', 'wc-customer-lists' ),
+				'menu_name'     => __( 'Event Lists', 'wc-customer-lists' ),
+				'add_new'       => __( 'Add Event List', 'wc-customer-lists' ),
+				'add_new_item'  => __( 'Add New Event List', 'wc-customer-lists' ),
+			],
+			'description'           => __( 'Customer generic event registry lists.', 'wc-customer-lists' ),
+			'public'                => false,
+			'publicly_queryable'    => false,
+			'show_ui'               => true,
+			'show_in_menu'          => 'woocommerce',
+			'query_var'             => false,
+			'rewrite'               => false,
+			'capability_type'       => 'post',
+			'map_meta_cap'          => true,
+			'has_archive'           => false,
+			'hierarchical'          => false,
+			'menu_position'         => null,
+			'menu_icon'             => 'dashicons-calendar-alt',
+			'supports'              => [ 'title' ],
+			'show_in_rest'          => false,
+			'delete_with_user'      => false,
+		];
+	}
 
-    /**
-     * Validate generic event constraints.
-     *
-     * For example, max per user if needed can be enforced here.
-     */
-    public function validate(): void {
-        parent::validate();
+	/**
+	 * Validate generic event constraints.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	public function validate(): void {
+		parent::validate();
 
-        $config = List_Registry::get_list_config( $this->get_post_type() );
-        $max_per_user = $config['max_per_user'] ?? 0;
-
-        if ( $max_per_user > 0 ) {
-            $user_lists = get_posts( [
-                'author'      => $this->get_owner_id(),
-                'post_type'   => $this->get_post_type(),
-                'post_status' => 'any',
-                'exclude'     => [ $this->get_id() ],
-            ] );
-
-            if ( count( $user_lists ) >= $max_per_user ) {
-                throw new \InvalidArgumentException(
-                    sprintf( 'Maximum of %d generic event list(s) allowed per user.', $max_per_user )
-                );
-            }
-        }
-    }
+		// Max lists per user (inherits List_Engine logic).
+		// No additional generic-specific validation needed.
+	}
 }
