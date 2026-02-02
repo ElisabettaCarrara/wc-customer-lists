@@ -97,8 +97,8 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	private function register_hooks() {
-		add_action( 'init', array( $this, 'register_post_types' ) );
-		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+		add_action( 'init', array( $this, 'register_post_types' ), 5 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ), 5 );
 
 		// Instantiate components.
 		$this->init_components();
@@ -148,11 +148,16 @@ final class WC_Customer_Lists {
 	}
 
 	/**
-	 * Enqueue frontend assets + localize data.
+	 * Enqueue frontend assets + localize data (FIXED).
 	 *
 	 * @since 1.0.0
 	 */
 	public function enqueue_scripts() {
+		// Load ONLY where needed (FIX #1).
+		if ( ! ( is_product() || is_account_page() ) ) {
+			return;
+		}
+
 		// CSS.
 		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'includes/assets/css/wc-customer-lists.css';
 		wp_enqueue_style(
@@ -194,8 +199,6 @@ final class WC_Customer_Lists {
 		}
 		
 		// Flush rewrite rules for My Account endpoint.
-		if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
-			WC_Customer_Lists_My_Account::flush_rules();
-		}
+		flush_rewrite_rules();
 	}
 }
