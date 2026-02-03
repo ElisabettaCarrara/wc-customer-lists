@@ -81,8 +81,4 @@ register_activation_hook( __FILE__, function() {
         }
     }
     
-    // Flush rewrite rules for My Account endpoint
-    if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
-        WC_Customer_Lists_My_Account::flush_rules();
-    }
 });
