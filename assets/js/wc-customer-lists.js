@@ -257,8 +257,11 @@ async function removeProduct(listId, productId) {
             const row = document.querySelector(`tr[data-product-id="${productId}"]`);
             if (row) row.remove();
             
-            // Update count
-            document.querySelector('.item-count')?.textContent = data.data.item_count;
+            // Update count - FIXED SYNTAX ERROR
+            const itemCountEl = document.querySelector('.item-count');
+            if (itemCountEl) {
+                itemCountEl.textContent = data.data.item_count;
+            }
             
             window.WCCL?.showNotification(data.data.message);
         } else {
