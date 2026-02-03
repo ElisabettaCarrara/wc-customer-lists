@@ -71,14 +71,19 @@ add_action( 'plugins_loaded', function() {
 
 // Activation
 register_activation_hook( __FILE__, function() {
-    $main_file = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+    require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
     
-    if ( file_exists( $main_file ) ) {
-        require_once $main_file;
-        
-        if ( class_exists( 'WC_Customer_Lists' ) ) {
-            WC_Customer_Lists::activate();
-        }
+    // 1. Activate core (CPTs)
+    if ( class_exists( 'WC_Customer_Lists' ) ) {
+        WC_Customer_Lists::activate();
     }
     
+    // 2. Force-instantiate My_Account to register endpoint
+    if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
+        new WC_Customer_Lists_My_Account();  // Triggers add_endpoint()
+    }
+    
+    // 3. NOW flush
+    WC_Customer_Lists_My_Account::flush_rules();
+    flush_rewrite_rules();  // CPT safety net
 });
