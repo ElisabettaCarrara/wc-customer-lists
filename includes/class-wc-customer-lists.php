@@ -200,6 +200,12 @@ final class WC_Customer_Lists {
 		if ( class_exists( 'WC_Customer_Lists_List_Registry' ) ) {
 			WC_Customer_Lists_List_Registry::register_post_types();
 		}
+
+// Instantiate My_Account to register endpoint, THEN flush
+    if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
+        $my_account = new WC_Customer_Lists_My_Account();  // Triggers add_endpoint()
+        WC_Customer_Lists_My_Account::flush_rules();
+    }
 		
 		// Flush rewrite rules for My Account endpoint.
 		flush_rewrite_rules();
