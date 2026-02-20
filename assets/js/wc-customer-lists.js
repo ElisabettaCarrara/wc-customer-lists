@@ -53,22 +53,36 @@ function initModal() {
     let currentProductId = null;
 
     /**
-     * Bind product buttons
+     * Bind product buttons using EVENT DELEGATION
+     * 
+     * This listens at the document level and checks if the clicked element
+     * is (or is inside) a button with .wc-customer-lists-add-btn class.
+     * 
+     * Benefits:
+     * - Works with buttons present at page load AND dynamically added later
+     * - Properly handles event bubbling without parent elements interfering
+     * - Single listener instead of one per button (more efficient)
      */
-    const addButtons = document.querySelectorAll('.wc-customer-lists-add-btn');
-    addButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            currentProductId = parseInt(button.dataset.productId, 10);
-            if (currentProductId) {
-                openModal();
-            }
-        });
+    document.addEventListener('click', function(e) {
+        // Use closest() to find the button, even if user clicked the icon inside
+        const button = e.target.closest('.wc-customer-lists-add-btn');
+        
+        // If clicked element is not our button, exit early
+        if (!button) return;
+        
+        // Prevent default behavior and stop event from bubbling to parent elements
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Extract product ID and open modal
+        currentProductId = parseInt(button.dataset.productId, 10);
+        if (currentProductId) {
+            openModal();
+        }
     });
 
     /**
-     * Close + reset
+     * Close + reset modal
      */
     function closeModal() {
         modal.close();
@@ -79,7 +93,10 @@ function initModal() {
     // Close button event
     const closeBtn = modal.querySelector('.modal-close-btn');
     if (closeBtn) {
-        closeBtn.addEventListener('click', closeModal);
+        closeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeModal();
+        });
     }
     
     // Overlay click event
@@ -96,7 +113,7 @@ function initModal() {
     });
 
     /**
-     * Open + fetch lists
+     * Open modal + fetch lists
      */
     function openModal() {
         modalContent.innerHTML = '<p class="wc-customer-lists-loading">Loading lists...</p>';
@@ -120,7 +137,7 @@ function initModal() {
     }
 
     /**
-     * Event fields toggle
+     * Event fields toggle when list selection changes
      */
     function handleListChange() {
         const dropdown = modalContent.querySelector('select[name="wc_list_id"]');
@@ -160,7 +177,10 @@ function initModal() {
     }
 
     /**
-     * Submit to AJAX
+     * Submit modal form to AJAX
+     * 
+     * Changed from listening on form submit to listening on button click.
+     * This gives us more control over the submission process.
      */
     const submitBtn = modal.querySelector('.modal-submit-btn');
     if (submitBtn) {
@@ -212,7 +232,10 @@ function initModal() {
     }
 
     /**
-     * Fetch lists AJAX
+     * Fetch user's lists via AJAX
+     * 
+     * @param {number} productId - The product ID to fetch lists for
+     * @returns {Promise<string>} - Promise resolving to HTML string of lists
      */
     function fetchUserLists(productId) {
         const params = new URLSearchParams({
@@ -238,6 +261,14 @@ function initModal() {
     }
 }
 
+/**
+ * Initialize My Account page handlers
+ * 
+ * Uses event delegation to handle:
+ * - Toggle list visibility
+ * - Delete entire lists
+ * - Remove individual products from lists
+ */
 function initMyAccountHandlers() {
     document.addEventListener('click', function(e) {
         // Toggle list products
@@ -258,7 +289,7 @@ function initMyAccountHandlers() {
             }
         }
 
-        // Remove single product
+        // Remove single product from list
         if (e.target.matches('.remove-item')) {
             if (confirm('Remove this product from list?')) {
                 removeProduct(e.target.dataset.listId, e.target.dataset.productId);
@@ -267,6 +298,11 @@ function initMyAccountHandlers() {
     });
 }
 
+/**
+ * Delete an entire list via AJAX
+ * 
+ * @param {number} listId - The list ID to delete
+ */
 function deleteList(listId) {
     const formData = new FormData();
     formData.append('action', 'wccl_delete_list');
@@ -305,6 +341,12 @@ function deleteList(listId) {
     });
 }
 
+/**
+ * Remove a single product from a list via AJAX
+ * 
+ * @param {number} listId - The list ID
+ * @param {number} productId - The product ID to remove
+ */
 function removeProduct(listId, productId) {
     const formData = new FormData();
     formData.append('action', 'wccl_toggle_product');
@@ -329,7 +371,7 @@ function removeProduct(listId, productId) {
                 row.remove();
             }
             
-            // Update count
+            // Update item count
             const itemCountEl = document.querySelector('.item-count');
             if (itemCountEl && data.data && typeof data.data.item_count !== 'undefined') {
                 itemCountEl.textContent = data.data.item_count;
