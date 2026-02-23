@@ -50,7 +50,7 @@ final class WC_Customer_Lists {
 	private function load_files() {
 		$base_dir = WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/';
 
-		$files = array(
+		$files = [
 			// Core (must load first).
 			'core/class-wc-customer-lists-list-registry.php',
 			'core/class-wc-customer-lists-list-engine.php',
@@ -69,7 +69,7 @@ final class WC_Customer_Lists {
 			'ajax/class-wc-customer-list-ajax-handlers.php',
 			'ui/class-wc-customer-lists-product-modal.php',
 			'ui/class-wc-customer-lists-my-account.php',
-		);
+		];
 
 		foreach ( $files as $relative_path ) {
 			$file = $base_dir . $relative_path;
@@ -97,14 +97,14 @@ final class WC_Customer_Lists {
 	 * @since 1.0.0
 	 */
 	private function register_hooks() {
-		add_action( 'init', array( $this, 'register_post_types' ), 5 );
-		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ), 5 );
+		add_action( 'init', [ $this, 'register_post_types' ], 5 );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_scripts' ], 5 );
 
 		// Instantiate components.
 		$this->init_components();
 
 		// Cron: auto-cart for ALL event lists.
-		add_action( 'wc_customer_list_auto_cart', array( 'WC_Customer_Lists_Event_List_Base', 'handle_auto_cart' ) );
+		add_action( 'wc_customer_list_auto_cart', [ 'WC_Customer_Lists_Event_List_Base', 'handle_auto_cart' ] );
 	}
 
 	/**
@@ -166,7 +166,7 @@ final class WC_Customer_Lists {
 		wp_enqueue_style(
 			'wc-customer-lists',
 			$css_file,
-			array(),
+			[],
 			WC_CUSTOMER_LISTS_VERSION
 		);
 
@@ -175,7 +175,7 @@ final class WC_Customer_Lists {
 		wp_enqueue_script(
 			'wc-customer-lists',
 			$js_file,
-			array( 'jquery' ),
+			[ 'jquery' ],
 			WC_CUSTOMER_LISTS_VERSION,
 			true
 		);
@@ -184,10 +184,10 @@ final class WC_Customer_Lists {
 		wp_localize_script(
 			'wc-customer-lists',
 			'WCCL_Ajax',
-			array(
+			[
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
-			)
+			]
 		);
 	}
 
@@ -209,5 +209,37 @@ final class WC_Customer_Lists {
 		
 		// Flush rewrite rules for My Account endpoint.
 		flush_rewrite_rules();
+	}
+
+	/**
+	 * Plugin uninstallation: Delete all custom post types and plugin options.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function uninstall() {
+		// Ensure WordPress functions are available.
+		if ( ! defined( 'ABSPATH' ) ) {
+			return;
+		}
+
+		// Delete all custom post types created by the plugin.
+		$post_types = [ 'wc_baby_list', 'wc_bridal_list', 'wc_event_list', 'wc_wishlist' ]; // Use actual CPT slugs.
+		foreach ( $post_types as $pt ) {
+			$posts = get_posts( [
+				'post_type'   => $pt,
+				'post_status' => 'any',
+				'numberposts' => -1,
+				'fields'      => 'ids', // Only get IDs for performance.
+			] );
+			foreach ( $posts as $post_id ) {
+				wp_delete_post( $post_id, true ); // Force delete.
+			}
+		}
+
+		// Delete plugin options.
+		delete_option( 'wc_customer_lists_settings' );
+
+		// Clear any scheduled cron jobs.
+		wp_clear_scheduled_hook( 'wc_customer_list_auto_cart' );
 	}
 }

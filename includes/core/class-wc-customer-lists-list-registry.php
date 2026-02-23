@@ -35,36 +35,36 @@ class WC_Customer_Lists_List_Registry {
 			return;
 		}
 
-		self::$list_types = array(
-			'wc_bridal_list' => array(
+		self::$list_types = [
+			'wc_bridal_list' => [
 				'class'              => 'WC_Customer_Lists_Bridal_List',
 				'label'              => __( 'Bridal/Wedding List', 'wc-customer-lists' ),
 				'description'        => __( 'Wedding registry lists.', 'wc-customer-lists' ),
 				'supports_events'    => true,
 				'supports_auto_cart' => true,
-			),
-			'wc_baby_list' => array(
+			],
+			'wc_baby_list' => [
 				'class'              => 'WC_Customer_Lists_Baby_List',
 				'label'              => __( 'Baby List', 'wc-customer-lists' ),
 				'description'        => __( 'Baby registry lists.', 'wc-customer-lists' ),
 				'supports_events'    => true,
 				'supports_auto_cart' => true,
-			),
-			'wc_event_list' => array(
+			],
+			'wc_event_list' => [
 				'class'              => 'WC_Customer_Lists_Generic_Event_List',
 				'label'              => __( 'Event List', 'wc-customer-lists' ),
 				'description'        => __( 'Generic event registry lists.', 'wc-customer-lists' ),
 				'supports_events'    => true,
 				'supports_auto_cart' => true,
-			),
-			'wc_wishlist' => array(
+			],
+			'wc_wishlist' => [
 				'class'              => 'WC_Customer_Lists_Wishlist',
 				'label'              => __( 'Wishlist', 'wc-customer-lists' ),
 				'description'        => __( 'Simple product wishlists.', 'wc-customer-lists' ),
 				'supports_events'    => false,
 				'supports_auto_cart' => false,
-			),
-		);
+			],
+		];
 	}
 
 	/**
@@ -107,10 +107,10 @@ class WC_Customer_Lists_List_Registry {
 	public static function get_enabled_list_types() {
 		self::init_list_types();
 
-		$settings = get_option( 'wc_customer_lists_settings', array() );
-		$enabled  = isset( $settings['enabled_lists'] ) ? $settings['enabled_lists'] : array();
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$enabled  = isset( $settings['enabled_lists'] ) ? $settings['enabled_lists'] : [];
 
-		$enabled_types = array();
+		$enabled_types = [];
 		foreach ( $enabled as $post_type ) {
 			if ( isset( self::$list_types[ $post_type ] ) ) {
 				$enabled_types[ $post_type ] = self::$list_types[ $post_type ];
@@ -131,19 +131,19 @@ class WC_Customer_Lists_List_Registry {
 		self::init_list_types();
 
 		if ( ! isset( self::$list_types[ $post_type ] ) ) {
-			return array();
+			return [];
 		}
 
 		$config   = self::$list_types[ $post_type ];
-		$settings = get_option( 'wc_customer_lists_settings', array() );
-		$limits   = isset( $settings['list_limits'][ $post_type ] ) ? $settings['list_limits'][ $post_type ] : array();
+		$settings = get_option( 'wc_customer_lists_settings', [] );
+		$limits   = isset( $settings['list_limits'][ $post_type ] ) ? $settings['list_limits'][ $post_type ] : [];
 
 		// Merge limits.
 		$config['max_lists']            = (int) ( isset( $limits['max_lists'] ) ? $limits['max_lists'] : 0 );
 		$config['max_items']            = (int) ( isset( $limits['max_items'] ) ? $limits['max_items'] : 0 );
 		$config['not_purchased_action'] = in_array(
 			isset( $limits['not_purchased_action'] ) ? $limits['not_purchased_action'] : 'keep',
-			array( 'keep', 'remove', 'purchased_only' ),
+			[ 'keep', 'remove', 'purchased_only' ],
 			true
 		) ? $limits['not_purchased_action'] : 'keep';
 

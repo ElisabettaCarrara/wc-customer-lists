@@ -70,10 +70,72 @@ add_action( 'plugins_loaded', function() {
 }, 10 );
 
 // Activation
-register_activation_hook( __FILE__, function() {
+		// CSS.
+		$css_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'assets/css/wc-customer-lists.css';
+		wp_enqueue_style(
+			'wc-customer-lists',
+			$css_file,
+			[],
+			WC_CUSTOMER_LISTS_VERSION
+		);
+
+		// JS.
+		$js_file = WC_CUSTOMER_LISTS_PLUGIN_URL . 'assets/js/wc-customer-lists.js';
+		wp_enqueue_script(
+			'wc-customer-lists',
+			$js_file,
+			[ 'jquery' ],
+			WC_CUSTOMER_LISTS_VERSION,
+			true
+		);
+
+		// Nonce + AJAX data.
+		wp_localize_script(
+			'wc-customer-lists',
+			'WCCL_Ajax',
+			[
+				'ajax_url' => admin_url( 'admin-ajax.php' ),
+				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
+			]
+		);
+	}
+
+	/**
+	 * Plugin activation: Register CPTs only.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function activate() {
+		if ( class_exists( 'WC_Customer_Lists_List_Registry' ) ) {
+			WC_Customer_Lists_List_Registry::register_post_types();
+		}
+
+// Instantiate My_Account to register endpoint, THEN flush
+    if ( class_exists( 'WC_Customer_Lists_My_Account' ) ) {
+        $my_account = new WC_Customer_Lists_My_Account();  // Triggers add_endpoint()
+        WC_Customer_Lists_My_Account::flush_rules();
+    }
+		
+		// Flush rewrite rules for My Account endpoint.
+		flush_rewrite_rules();
+	}
+}
+
+
+// Deactivation
+register_deactivation_hook( __FILE__, function() {
     require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
     
     if ( class_exists( 'WC_Customer_Lists' ) ) {
-        WC_Customer_Lists::activate();
+        WC_Customer_Lists::deactivate();
+    }
+});
+ 
+// Uninstall
+register_uninstall_hook( __FILE__, function() {
+    require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+    
+    if ( class_exists( 'WC_Customer_Lists' ) ) {
+        WC_Customer_Lists::uninstall();
     }
 });

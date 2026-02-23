@@ -12,14 +12,14 @@ defined( 'ABSPATH' ) || exit;
 class WC_Customer_Lists_My_Account {
 
 	public function __construct() {
-		add_filter( 'woocommerce_account_menu_items', array( $this, 'add_my_lists_tab' ), 10, 1 );
-		add_action( 'woocommerce_account_my-lists_endpoint', array( $this, 'render_lists_page' ) );
-		add_action( 'init', array( $this, 'add_endpoint' ) );
-		add_filter( 'query_vars', array( $this, 'add_query_vars' ), 0 );
+		add_filter( 'woocommerce_account_menu_items', [ $this, 'add_my_lists_tab' ], 10, 1 );
+		add_action( 'woocommerce_account_my-lists_endpoint', [ $this, 'render_lists_page' ] );
+		add_action( 'init', [ $this, 'add_endpoint' ] );
+		add_filter( 'query_vars', [ $this, 'add_query_vars' ], 0 );
 
 		// AJAX for inline edits.
-		add_action( 'wp_ajax_wccl_delete_list', array( $this, 'ajax_delete_list' ) );
-		add_action( 'wp_ajax_wccl_toggle_product', array( $this, 'ajax_toggle_product' ) );
+		add_action( 'wp_ajax_wccl_delete_list', [ $this, 'ajax_delete_list' ] );
+		add_action( 'wp_ajax_wccl_toggle_product', [ $this, 'ajax_toggle_product' ] );
 	}
 
 	/**
@@ -101,19 +101,19 @@ class WC_Customer_Lists_My_Account {
 	 * Get all user's lists grouped by type.
 	 */
 	private function get_user_lists( $user_id ) {
-		$lists = array();
+		$lists = [];
 
 		$post_types = array_keys( WC_Customer_Lists_List_Registry::get_all_list_types() );
 
 		foreach ( $post_types as $post_type ) {
-			$posts = get_posts( array(
+			$posts = get_posts( [
 				'author'      => $user_id,
 				'post_type'   => $post_type,
-				'post_status' => array( 'private', 'publish' ),
+				'post_status' => [ 'private', 'publish' ],
 				'numberposts' => -1,
 				'orderby'     => 'date',
 				'order'       => 'DESC',
-			) );
+			] );
 
 			foreach ( $posts as $post ) {
 				try {
@@ -122,7 +122,7 @@ class WC_Customer_Lists_My_Account {
 						continue;
 					}
 
-					$lists[] = array(
+					$lists[] = [
 						'id'        => $post->ID,
 						'title'     => get_the_title( $post->ID ),
 						'type'      => $list->get_type(),
@@ -131,7 +131,7 @@ class WC_Customer_Lists_My_Account {
 						'count'     => count( $list->get_items() ),
 						'updated'   => get_the_modified_date( 'M j, Y', $post ),
 						'items'     => $list->get_items(),
-					);
+					];
 				} catch ( Exception $e ) {
 					// Skip invalid lists.
 				}
@@ -227,24 +227,24 @@ class WC_Customer_Lists_My_Account {
 		$list_id = isset( $_POST['list_id'] ) ? absint( $_POST['list_id'] ) : 0;
 		$user_id = get_current_user_id();
 
-		if ( ! $list_id || ! $user_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ) );
+				if ( ! $list_id || ! $user_id ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
 		}
 
 		try {
 			$list = WC_Customer_Lists_List_Engine::get( $list_id );
 			if ( $list->get_owner_id() !== $user_id ) {
-				wp_send_json_error( array( 'message' => __( 'Not your list.', 'wc-customer-lists' ) ) );
+				wp_send_json_error( [ 'message' => __( 'Not your list.', 'wc-customer-lists' ) ] );
 			}
 
 			wp_delete_post( $list_id, true );
 
-			wp_send_json_success( array( 
+			wp_send_json_success( [ 
 				'message' => __( 'List deleted.', 'wc-customer-lists' ),
 				'list_id' => $list_id 
-			) );
+			] );
 		} catch ( Exception $e ) {
-			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+			wp_send_json_error( [ 'message' => $e->getMessage() ] );
 		}
 	}
 
@@ -259,25 +259,25 @@ class WC_Customer_Lists_My_Account {
 		$user_id    = get_current_user_id();
 
 		if ( ! $list_id || ! $product_id || ! $user_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ) );
+			wp_send_json_error( [ 'message' => __( 'Invalid request.', 'wc-customer-lists' ) ] );
 		}
 
 		try {
 			$list = WC_Customer_Lists_List_Engine::get( $list_id );
 			if ( $list->get_owner_id() !== $user_id ) {
-				wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ) );
+				wp_send_json_error( [ 'message' => __( 'Permission denied.', 'wc-customer-lists' ) ] );
 			}
 
 			$list->remove_item( $product_id );
 
-			wp_send_json_success( array(
+			wp_send_json_success( [
 				'message'    => __( 'Product removed.', 'wc-customer-lists' ),
 				'list_id'    => $list_id,
 				'product_id' => $product_id,
 				'item_count' => count( $list->get_items() ),
-			) );
+			] );
 		} catch ( Exception $e ) {
-			wp_send_json_error( array( 'message' => $e->getMessage() ) );
+			wp_send_json_error( [ 'message' => $e->getMessage() ] );
 		}
 	}
 }
