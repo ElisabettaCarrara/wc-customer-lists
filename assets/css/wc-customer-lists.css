@@ -1,9 +1,9 @@
-/* ===============================
+/* ======================================================
    Add to List Buttons
-   =============================== */
+====================================================== */
 
-/* Wrapper for title + button on loop/archive pages */
-.wc-customer-lists-title-wrapper {
+/* Wrapper for title + button on archive pages */
+.wccl-title-wrapper {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -11,20 +11,16 @@
     width: 100%;
 }
 
-/* Loop/archive button (icon only) */
-.wc-customer-lists-add-btn.wc-customer-lists-loop {
-    background: transparent !important;
-    border: none !important;
-    padding: 4px !important;
+/* Archive / loop button */
+.wccl-add-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
     cursor: pointer;
-    flex-shrink: 0;
     line-height: 1;
-    margin: 0 !important;
-    box-shadow: none !important;
-    min-height: auto !important;
 }
 
-.wc-customer-lists-add-btn.wc-customer-lists-loop .dashicons {
+.wccl-add-btn .dashicons {
     font-size: 20px;
     width: 20px;
     height: 20px;
@@ -32,341 +28,292 @@
     transition: color 0.2s ease;
 }
 
-.wc-customer-lists-add-btn.wc-customer-lists-loop:hover .dashicons,
-.wc-customer-lists-add-btn.wc-customer-lists-loop:focus .dashicons {
+.wccl-add-btn:hover .dashicons,
+.wccl-add-btn:focus .dashicons {
     color: #e74c3c;
 }
 
-/* Single product button (icon + text) */
-.wc-customer-lists-add-btn.wc-customer-lists-single {
-    display: inline-flex !important;
+/* Single product button */
+.wccl-add-btn-single {
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin: 10px 0 !important;
-    padding: 10px 20px !important;
-    background: #f5f5f5 !important;
-    border: 1px solid #ddd !important;
+    margin: 10px 0;
+    padding: 10px 18px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
     transition: all 0.2s ease;
-    text-decoration: none !important;
-    font-weight: 400 !important;
-    box-shadow: none !important;
 }
 
-.wc-customer-lists-add-btn.wc-customer-lists-single .dashicons {
+.wccl-add-btn-single:hover {
+    background: #fff;
+    border-color: #96588a;
+}
+
+.wccl-add-btn-single .dashicons {
     font-size: 18px;
-    width: 18px;
-    height: 18px;
     color: #999;
-    transition: color 0.2s ease;
 }
 
-.wc-customer-lists-add-btn.wc-customer-lists-single:hover,
-.wc-customer-lists-add-btn.wc-customer-lists-single:focus {
-    background: #fff !important;
-    border-color: #e74c3c !important;
+.wccl-add-btn-single:hover .dashicons {
+    color: #96588a;
 }
 
-.wc-customer-lists-add-btn.wc-customer-lists-single:hover .dashicons,
-.wc-customer-lists-add-btn.wc-customer-lists-single:focus .dashicons {
-    color: #e74c3c;
-}
+/* ======================================================
+   Modal
+====================================================== */
 
-.wc-customer-lists-add-btn.wc-customer-lists-single .btn-text {
-    font-size: 14px;
-    line-height: 1;
-}
-
-/* ===============================
-   WC Customer Lists Modal
-   =============================== */
-.wc-customer-lists-modal {
+.wccl-modal {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease-in-out;
-    border: none;
-    padding: 0;
-    background: transparent;
+    display: none;
 }
 
-.wc-customer-lists-modal[open] {
-    opacity: 1;
-    pointer-events: auto;
+.wccl-modal.is-active {
+    display: block;
 }
 
-.wc-customer-lists-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9998;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
+/* Overlay */
+.wccl-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
 }
 
-.wc-customer-lists-modal[open] .wc-customer-lists-modal-overlay {
-    opacity: 1;
-}
-
-.wc-customer-lists-modal-wrapper {
+/* Modal container */
+.wccl-modal-container {
     position: relative;
-    width: 100%;
     max-width: 500px;
+    margin: 10vh auto;
     background: #fff;
     border-radius: 8px;
-    box-shadow: 0 5px 25px rgba(0,0,0,0.3);
-    z-index: 10000;
-    padding: 1.5em;
+    padding: 24px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+    animation: wcclFadeIn 0.25s ease;
+}
+
+/* Header */
+.wccl-modal-header {
     display: flex;
-    flex-direction: column;
-    transform: translateY(-20px);
-    transition: transform 0.3s ease-in-out;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
-.wc-customer-lists-modal[open] .wc-customer-lists-modal-wrapper {
-    transform: translateY(0);
+.wccl-modal-title {
+    margin: 0;
+    font-size: 1.4rem;
 }
 
-.wc-customer-lists-modal-form {
-    display: flex;
-    flex-direction: column;
-}
-
-.wc-customer-lists-modal h2 {
-    font-size: 1.5em;
-    margin-bottom: 1em;
-    margin-top: 0;
-}
-
-.wc-customer-lists-modal-content {
-    margin-bottom: 1em;
-}
-
-.wc-customer-lists-loading {
-    font-style: italic;
-    color: #555;
-}
-
-.wc-event-field {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 0.75em;
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.wc-event-field.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.wc-event-field label {
-    font-weight: 600;
-    margin-bottom: 0.25em;
-}
-
-.wc-event-field input,
-.wc-customer-lists-modal-content select {
-    padding: 0.5em 0.75em;
-    font-size: 1em;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.wc-customer-lists-modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5em;
-}
-
-.wc-customer-lists-modal .modal-close-btn {
-    position: absolute;
-    top: 0.5em;
-    right: 0.5em;
+/* Close button */
+.wccl-modal-close {
     background: none;
     border: none;
-    font-size: 1.25em;
+    font-size: 20px;
     cursor: pointer;
-    line-height: 1;
-    padding: 0.25em 0.5em;
-    color: #555;
-    transition: color 0.2s ease;
+    color: #666;
 }
 
-.wc-customer-lists-modal .modal-close-btn:hover {
+.wccl-modal-close:hover {
     color: #000;
 }
 
-.wc-customer-lists-modal .modal-submit-btn {
-    background-color: #96588a;
+/* Body */
+.wccl-modal-body {
+    margin-bottom: 20px;
+}
+
+/* Footer */
+.wccl-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Form fields */
+.wccl-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.wccl-field label {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.wccl-field input,
+.wccl-field select {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Submit button */
+.wccl-submit-btn {
+    background: #96588a;
     color: #fff;
     border: none;
+    padding: 10px 16px;
     border-radius: 4px;
-    padding: 0.5em 1em;
-    font-size: 1em;
     cursor: pointer;
-    transition: background 0.2s ease-in-out;
 }
 
-.wc-customer-lists-modal .modal-submit-btn:hover {
-    background-color: #82366f;
+.wccl-submit-btn:hover {
+    background: #7f4874;
 }
 
-/* ===============================
-   My Account Lists (WooCommerce style)
-   =============================== */
-.wc-customer-lists-card {
+/* ======================================================
+   My Account Lists
+====================================================== */
+
+.wccl-lists {
+    margin-top: 20px;
+}
+
+.wccl-list-card {
     background: #fff;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-bottom: 2em;
-    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    border-radius: 6px;
+    margin-bottom: 24px;
 }
 
-.wc-customer-lists-card-header {
-    padding: 1.5em;
+.wccl-list-header {
+    padding: 18px;
     border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 1em;
+    align-items: center;
 }
 
-.wc-customer-lists-card-header h3 {
+.wccl-list-title {
     margin: 0;
-    font-size: 1.3em;
+    font-size: 1.2rem;
 }
 
-.wc-customer-lists-card .list-meta {
+.wccl-list-meta {
+    font-size: 0.9rem;
     color: #666;
-    font-size: 0.9em;
 }
 
-.wc-customer-lists-card .list-actions {
+/* Actions */
+.wccl-list-actions {
     display: flex;
-    gap: 0.5em;
-    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.wc-customer-lists-card .toggle-list,
-.wc-customer-lists-card .delete-list {
-    font-size: 0.85em;
-    padding: 0.4em 0.8em;
+.wccl-btn-small {
+    padding: 6px 10px;
+    font-size: 0.85rem;
 }
 
-.wc-customer-lists-card .delete-list {
+/* Delete button */
+.wccl-btn-danger {
     background: #d63638;
-    color: white;
-    border-color: #d63638;
+    border: none;
+    color: #fff;
 }
 
-.wc-customer-lists-card .delete-list:hover {
-    background: #c32d2f;
+.wccl-btn-danger:hover {
+    background: #b32d2e;
 }
 
-.wc-customer-lists-products {
-    padding: 1.5em;
+/* Products table */
+.wccl-products {
+    padding: 18px;
 }
 
-.woocommerce-table--lists {
+.wccl-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 0;
 }
 
-.woocommerce-table--lists th {
-    background: #f8f9fa;
-    padding: 1em 0.75em;
+.wccl-table th {
     text-align: left;
-    font-weight: 600;
+    padding: 10px;
     border-bottom: 2px solid #eee;
-}
-
-.woocommerce-table--lists td {
-    padding: 1em 0.75em;
-    border-bottom: 1px solid #eee;
-    vertical-align: top;
-}
-
-.woocommerce-table--lists tr:hover {
     background: #f8f9fa;
 }
 
-.woocommerce-table--lists .remove-item {
+.wccl-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.wccl-table tr:hover {
+    background: #f9f9f9;
+}
+
+/* Remove item */
+.wccl-remove-item {
     background: #d63638;
-    color: white !important;
-    border-color: #d63638;
-    font-size: 0.8em;
+    border: none;
+    color: #fff;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
 }
 
-.woocommerce-table--lists .remove-item:hover {
-    background: #c32d2f !important;
+.wccl-remove-item:hover {
+    background: #b32d2e;
 }
 
-/* ===============================
-   Notifications (toast)
-   =============================== */
-.wccl-notification {
+/* ======================================================
+   Notifications
+====================================================== */
+
+.wccl-toast {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 10001;
-    padding: 1rem 1.5rem;
+    z-index: 10000;
+    padding: 14px 18px;
     border-radius: 4px;
-    color: white;
+    color: #fff;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    max-width: 350px;
-    font-family: inherit;
-    animation: wccl-slideIn 0.3s ease-out;
+    animation: wcclToastIn 0.3s ease;
 }
 
-.wccl-notification.wccl-success {
+.wccl-toast-success {
     background: #00a32a;
 }
 
-.wccl-notification.wccl-error {
+.wccl-toast-error {
     background: #d63638;
 }
 
-.wccl-notification-close {
-    margin-left: 1rem;
+.wccl-toast-close {
+    margin-left: 10px;
     background: none;
     border: none;
     color: inherit;
-    font-size: 1.2rem;
     cursor: pointer;
-    float: right;
-    line-height: 1;
-    padding: 0;
-    opacity: 0.8;
-    transition: opacity 0.2s;
 }
 
-.wccl-notification-close:hover {
-    opacity: 1;
-}
+/* ======================================================
+   Animations
+====================================================== */
 
-@keyframes wccl-slideIn {
+@keyframes wcclFadeIn {
     from {
-        transform: translateX(100%);
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes wcclToastIn {
+    from {
+        transform: translateX(120%);
         opacity: 0;
     }
     to {
@@ -375,37 +322,35 @@
     }
 }
 
-/* ===============================
+/* ======================================================
    Responsive
-   =============================== */
-@media (max-width: 782px) {
-    .wc-customer-lists-card-header {
+====================================================== */
+
+@media (max-width: 768px) {
+
+    .wccl-modal-container {
+        margin: 5vh 15px;
+        padding: 18px;
+    }
+
+    .wccl-list-header {
         flex-direction: column;
-        align-items: stretch;
+        align-items: flex-start;
+        gap: 10px;
     }
-    
-    .wc-customer-lists-card .list-actions {
-        justify-content: flex-end;
-    }
-    
-    .woocommerce-table--lists {
-        font-size: 0.9em;
-    }
+
 }
 
 @media (max-width: 600px) {
-    .wc-customer-lists-modal-wrapper {
-        margin: 10% 1em;
-        padding: 1em;
+
+    .wccl-add-btn-single {
+        padding: 8px 12px;
+        font-size: 0.9rem;
     }
-    
-    .wccl-notification {
+
+    .wccl-toast {
         left: 20px;
         right: 20px;
-        max-width: none;
     }
-    
-    .wc-customer-lists-add-btn.wc-customer-lists-single .btn-text {
-        font-size: 13px;
-    }
+
 }
