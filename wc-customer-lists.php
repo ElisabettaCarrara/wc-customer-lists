@@ -87,10 +87,5 @@ register_deactivation_hook( __FILE__, function () {
 } );
 
 // ── Uninstall ─────────────────────────────────────────────────────────────────
-register_uninstall_hook( __FILE__, function () {
-    require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
-
-    if ( class_exists( 'WC_Customer_Lists' ) ) {
-        WC_Customer_Lists::uninstall();
-    }
-} );
+require_once WC_CUSTOMER_LISTS_PLUGIN_DIR . 'includes/class-wc-customer-lists.php';
+register_uninstall_hook( __FILE__, [ 'WC_Customer_Lists', 'uninstall' ] );
