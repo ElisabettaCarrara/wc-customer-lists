@@ -2,7 +2,7 @@
 /**
  * Product Modal UI.
  *
- * "Add to List" button + modal on product pages.
+ * Renders the "Add to List" button and modal on product pages.
  *
  * @package WC_Customer_Lists
  */
@@ -10,34 +10,35 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Product modal renderer.
+ * Handles rendering of the "Add to List" button and modal overlay.
  */
 class WC_Customer_Lists_Product_Modal {
 
 	/**
 	 * Constructor.
+	 *
+	 * Registers all front-end hooks if WooCommerce is active.
 	 */
 	public function __construct() {
-
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			return;
 		}
 
-		// Single product page.
+		// Button on the single product page.
 		add_action(
 			'woocommerce_single_product_summary',
 			array( $this, 'render_single_product_button' ),
 			29
 		);
 
-		// Archive / loop button.
+		// Button in the shop/archive loop.
 		add_action(
 			'woocommerce_after_shop_loop_item',
 			array( $this, 'render_loop_button' ),
 			20
 		);
 
-		// Global modal.
+		// Global modal injected once in the footer.
 		add_action(
 			'wp_footer',
 			array( $this, 'render_modal' )
@@ -45,10 +46,12 @@ class WC_Customer_Lists_Product_Modal {
 	}
 
 	/**
-	 * Render button on single product page.
+	 * Render the "Add to List" button on the single product page.
+	 *
+	 * Hooked into `woocommerce_single_product_summary` at priority 29,
+	 * placing it just after the add-to-cart button.
 	 */
 	public function render_single_product_button() {
-
 		if ( ! is_user_logged_in() ) {
 			return;
 		}
@@ -61,34 +64,29 @@ class WC_Customer_Lists_Product_Modal {
 
 		$product_id = $product->get_id();
 		?>
-
 		<div class="wc-customer-lists-single-wrapper">
-
 			<button
 				type="button"
 				class="wc-customer-lists-add-btn button"
 				data-product-id="<?php echo esc_attr( $product_id ); ?>"
 				aria-label="<?php echo esc_attr( sprintf( __( 'Add %s to list', 'wc-customer-lists' ), $product->get_name() ) ); ?>"
 			>
-
 				<span class="dashicons dashicons-heart" aria-hidden="true"></span>
-
 				<span class="btn-text">
 					<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
 				</span>
-
 			</button>
-
 		</div>
-
 		<?php
 	}
 
 	/**
-	 * Render button in product loop.
+	 * Render the "Add to List" icon button in the product loop.
+	 *
+	 * Hooked into `woocommerce_after_shop_loop_item` at priority 20.
+	 * Displays an icon-only button; the full label is provided via aria-label.
 	 */
 	public function render_loop_button() {
-
 		if ( ! is_user_logged_in() ) {
 			return;
 		}
@@ -101,7 +99,6 @@ class WC_Customer_Lists_Product_Modal {
 
 		$product_id = $product->get_id();
 		?>
-
 		<button
 			type="button"
 			class="wc-customer-lists-add-btn wc-customer-lists-loop"
@@ -109,71 +106,41 @@ class WC_Customer_Lists_Product_Modal {
 			aria-label="<?php echo esc_attr( sprintf( __( 'Add %s to list', 'wc-customer-lists' ), $product->get_name() ) ); ?>"
 			title="<?php esc_attr_e( 'Add to List', 'wc-customer-lists' ); ?>"
 		>
-
 			<span class="dashicons dashicons-heart" aria-hidden="true"></span>
-
 		</button>
-
 		<?php
 	}
 
 	/**
-	 * Render modal.
+	 * Render the global "Add to List" modal.
+	 *
+	 * Injected once into the footer via `wp_footer`. The modal body is
+	 * populated dynamically via AJAX after a button is clicked.
 	 */
 	public function render_modal() {
-
 		if ( ! is_user_logged_in() ) {
 			return;
 		}
 		?>
-
-		<div
-			id="wc-customer-lists-modal"
-			class="wc-customer-lists-modal"
-			role="dialog"
-			aria-modal="true"
-			aria-hidden="true"
-		>
-
-			<div class="wc-customer-lists-modal-overlay"></div>
-
-			<div class="wc-customer-lists-modal-content">
-
-				<button
-					type="button"
-					class="modal-close-btn"
-					aria-label="<?php esc_attr_e( 'Close modal', 'wc-customer-lists' ); ?>"
-				>
-					×
-				</button>
-
-				<h2 id="wc-customer-lists-title">
+		<div id="wc-customer-lists-modal" class="wccl-modal" aria-hidden="true">
+			<div class="wccl-modal-overlay"></div>
+			<div class="wccl-modal-container">
+				<button type="button" class="wccl-modal-close">&times;</button>
+				<h3 class="wccl-modal-title">
 					<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
-				</h2>
-
-				<div class="wc-customer-lists-modal-body">
-
+				</h3>
+				<div class="wccl-modal-body wc-customer-lists-modal-body">
 					<p class="wc-customer-lists-loading">
 						<?php esc_html_e( 'Loading lists...', 'wc-customer-lists' ); ?>
 					</p>
-
 				</div>
-
-				<div class="wc-customer-lists-modal-actions">
-
-					<button
-						type="button"
-						class="modal-submit-btn button alt"
-					>
-						<?php esc_html_e( 'Add Product', 'wc-customer-lists' ); ?>
+				<div class="wccl-modal-footer">
+					<button type="button" class="wccl-submit-btn modal-submit-btn">
+						<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
 					</button>
-
 				</div>
-
 			</div>
-
 		</div>
-
 		<?php
 	}
 }
