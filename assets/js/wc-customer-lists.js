@@ -142,15 +142,14 @@ function initProductModal() {
 				return response.json();
 
 			} )
-			.then( function ( data ) {
-
-				if ( ! data.success ) {
-					throw data;
-				}
-
-				return data.data.html;
-
-			} );
+			.then( data => {
+    if (!data.success) throw data;
+    return data.data.options;  // Array of <option>
+})
+.then( options => {
+    const selectHTML = options.map(opt => opt).join('');
+    modalContent.innerHTML = `<label>Select list</label><select name="wclistid">${selectHTML}</select>`;
+});
 
 	}
 
