@@ -76,23 +76,18 @@ final class WC_Customer_List_Ajax_Handlers {
         ] );
     }
 
-    ob_start();
-    ?>
-    <label for="wclistid"><?php esc_html_e( 'Select a list', 'wc-customer-lists' ); ?></label>
-    <select name="wclistid" id="wclistid">
-        <?php foreach ( $lists as $list ): ?>
-            <option 
-                value="<?php echo esc_attr( $list['id'] ); ?>"
-                data-supports-events="<?php echo esc_attr( $list['supports_events'] ? '1' : '0' ); ?>"
-            >
-                <?php echo esc_html( $list['title'] ); ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-    <div id="wceventfieldscontainer"></div>
-    <?php
-    wp_send_json_success( [ 'html' => ob_get_clean() ] );
-}
+    $options = array_map( function( $list ) {
+    return sprintf(
+        '<option value="%d" data-supports-events="%d">%s</option>',
+        $list['id'],
+        $list['supports_events'] ? 1 : 0,
+        esc_html( $list['title'] )
+    );
+}, $lists );
+
+wp_send_json_success( [ 
+    'options' => $options  // ← Array of <option> strings
+] );
 
 	/**
 	 * AJAX: Add product to list.
