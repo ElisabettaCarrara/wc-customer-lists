@@ -115,6 +115,15 @@ function initProductModal() {
 	 * @return {Promise}
 	 */
 	function fetchUserLists( productId ) {
+		// 🔥 CHECK CACHE FIRST
+    const cache = document.getElementById('wccl-lists-cache');
+    if ( cache && cache.innerHTML.trim() ) {
+        return Promise.resolve( cache.innerHTML );
+    }
+    
+    // Fallback to Ajax
+    return fetch(/* normal Ajax */);
+}
 
 		const params = new URLSearchParams();
 
