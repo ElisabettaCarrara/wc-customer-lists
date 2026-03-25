@@ -86,7 +86,7 @@ function initProductModal() {
 	 */
 	function openModal() {
 
-		modal.classList.add( 'open' );
+		modal.classList.add( 'is-active' );
 		modal.setAttribute( 'aria-hidden', 'false' );
 
 	}
@@ -96,7 +96,7 @@ function initProductModal() {
 	 */
 	function closeModal() {
 
-		modal.classList.remove( 'open' );
+		modal.classList.remove( 'is-active' );
 		modal.setAttribute( 'aria-hidden', 'true' );
 
 		currentProductId = null;
