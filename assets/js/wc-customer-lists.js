@@ -75,7 +75,7 @@ function initProductModal() {
 	}
 
 	const modalContent = modal.querySelector( '.wc-customer-lists-modal-body' );
-	const closeButton = modal.querySelector( '.modal-close-btn' );
+	const closeButton = modal.querySelector( '.wccl-modal-close' );
 	const overlay = modal.querySelector( '.wc-customer-lists-modal-overlay' );
 	const submitButton = modal.querySelector( '.modal-submit-btn' );
 
