@@ -268,17 +268,17 @@ function initProductModal() {
 					return;
 				}
 
-				const dropdown = modalContent.querySelector('select[name="wclistid"]');
+				const dropdown = modalContent.querySelector( 'select[name="wclistid"]' );
 
-if ( ! dropdown ) {
-  showNotification('No lists available. Create one first.', 'error');
-  return;
-}
+				if ( ! dropdown ) {
+					showNotification( 'No lists available. Create one first.', 'error' );
+					return;
+				}
 
-if ( ! dropdown.value ) {
-  showNotification('Please select a list.', 'error');
-  return;
-}
+				if ( ! dropdown.value ) {
+					showNotification( 'Please select a list.', 'error' );
+					return;
+				}
 
 				const formData = new FormData();
 
