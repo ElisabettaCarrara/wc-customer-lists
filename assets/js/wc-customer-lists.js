@@ -108,59 +108,71 @@ function initProductModal() {
 
 	}
 
-	/**
-	 * Fetch user lists via AJAX.
-	 *
-	 * @param {number} productId Product ID.
-	 * @return {Promise}
-	 */
-	function fetchUserLists( productId ) {
-		// 🔥 CHECK CACHE FIRST
-    const cache = document.getElementById('wccl-lists-cache');
+	//**
+ * Fetch user lists via AJAX (with cache).
+ *
+ * @param {number} productId Product ID.
+ * @return {Promise<string>} HTML string.
+ */
+function fetchUserLists( productId ) {
+
+    // 🔥 CACHE FIRST (instant!)
+    const cache = document.getElementById( 'wccl-lists-cache' );
     if ( cache && cache.innerHTML.trim() ) {
+        console.log( '✅ Using cache' );
         return Promise.resolve( cache.innerHTML );
     }
-    
-    // Fallback to Ajax
-    return fetch(/* normal Ajax */);
+
+    console.log( '🔄 Ajax fallback' );
+
+    const params = new URLSearchParams();
+    params.append( 'action', 'wccl_get_user_lists' );
+    params.append( 'nonce', WCCL_Ajax.nonce );
+    params.append( 'product_id', productId );
+
+    return fetch( WCCL_Ajax.ajax_url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+    })
+    .then( function ( response ) {
+        if ( ! response.ok ) {
+            throw new Error( 'Server error: ' + response.status );
+        }
+        return response.json();
+    })
+    .then( function ( data ) {
+        if ( ! data.success ) {
+            throw new Error( data.data?.message || 'Unknown error' );
+        }
+
+        // 🔥 JSON → HTML
+        const optionsHTML = Array.isArray( data.data.options ) 
+            ? data.data.options.join( '' )
+            : data.data.html || '<option disabled>No lists</option>';
+
+        const html = `
+            <label for="wclistid">Select a list</label>
+            <select name="wclistid" id="wclistid">${optionsHTML}</select>
+            <div id="wceventfieldscontainer"></div>
+        `;
+
+        // 🔥 CACHE FOR NEXT TIME
+        const cacheEl = document.getElementById( 'wccl-lists-cache' );
+        if ( cacheEl ) {
+            cacheEl.innerHTML = html;
+        }
+
+        return html;
+    })
+    .catch( function ( error ) {
+        console.error( 'Lists error:', error );
+        return '<p class="error">Failed to load lists. <button onclick="location.reload()">Retry</button></p>';
+    });
+
 }
-
-		const params = new URLSearchParams();
-
-		params.append( 'action', 'wccl_get_user_lists' );
-		params.append( 'nonce', WCCL_Ajax.nonce );
-		params.append( 'product_id', productId );
-
-		return fetch(
-			WCCL_Ajax.ajax_url,
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type':
-						'application/x-www-form-urlencoded',
-				},
-				body: params.toString(),
-			}
-		)
-			.then( function ( response ) {
-
-				if ( ! response.ok ) {
-					throw new Error( 'Server error' );
-				}
-
-				return response.json();
-
-			} )
-			.then( data => {
-    if (!data.success) throw data;
-    return data.data.options;  // Array of <option>
-})
-.then( options => {
-    const selectHTML = options.map(opt => opt).join('');
-    modalContent.innerHTML = `<label>Select list</label><select name="wclistid">${selectHTML}</select>`;
-});
-
-	}
 
 	/**
 	 * Handle product button clicks using event delegation.
