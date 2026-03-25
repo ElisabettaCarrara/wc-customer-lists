@@ -137,26 +137,38 @@ class WC_Customer_Lists_Product_Modal {
     ?>
     
     <!-- Cached lists (invisible) -->
-    <div id="wccl-lists-cache" style="display:none;"><?php echo $cached_html; ?></div>
-		<div id="wc-customer-lists-modal" class="wccl-modal" aria-hidden="true">
-			<div class="wccl-modal-overlay"></div>
-			<div class="wccl-modal-container">
-				<button type="button" class="wccl-modal-close">&times;</button>
-				<h3 class="wccl-modal-title">
-					<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
-				</h3>
-				<div class="wccl-modal-body wc-customer-lists-modal-body">
-					<p class="wc-customer-lists-loading">
-						<?php esc_html_e( 'Loading lists...', 'wc-customer-lists' ); ?>
-					</p>
-				</div>
-				<div class="wccl-modal-footer">
-					<button type="button" class="wccl-submit-btn modal-submit-btn">
-						<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
-					</button>
-				</div>
-			</div>
+  <div id="wc-customer-lists-modal"
+	class="wccl-modal-root"
+	aria-hidden="true"
+	role="dialog"
+	aria-modal="true">
+
+	<div class="wccl-modal-overlay"></div>
+
+	<div class="wccl-modal-container">
+		<button type="button"
+			class="wccl-modal-close"
+			aria-label="<?php esc_attr_e( 'Close modal', 'wc-customer-lists' ); ?>">
+			&times;
+		</button>
+
+		<h3 class="wccl-modal-title">
+			<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
+		</h3>
+
+		<div class="wccl-modal-body wc-customer-lists-modal-body">
+			<p class="wc-customer-lists-loading">
+				<?php esc_html_e( 'Loading lists...', 'wc-customer-lists' ); ?>
+			</p>
 		</div>
+
+		<div class="wccl-modal-footer">
+			<button type="button" class="wccl-submit-btn modal-submit-btn">
+				<?php esc_html_e( 'Add to List', 'wc-customer-lists' ); ?>
+			</button>
+		</div>
+	</div>
+</div>
 		<?php
 	}
 }
