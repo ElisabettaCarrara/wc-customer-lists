@@ -196,7 +196,7 @@ final class WC_Customer_Lists {
 			'WCCL_Ajax',
 			[
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
-				'nonce'    => wp_create_nonce( 'wc_customer_lists_nonce' ),
+				'nonce'    => wp_create_nonce( 'wccustomerlistsnonce' ),
 			]
 		);
 	}
