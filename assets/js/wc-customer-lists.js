@@ -74,10 +74,10 @@ function initProductModal() {
 		return;
 	}
 
-	const modalContent = modal.querySelector( '.wc-customer-lists-modal-body' );
-	const closeButton = modal.querySelector( '.wccl-modal-close' );
-	const overlay = modal.querySelector( '.wc-customer-lists-modal-overlay' );
-	const submitButton = modal.querySelector( '.modal-submit-btn' );
+	const modalContent   = modal.querySelector( '.wccl-modal-body' );
+    const closeButton    = modal.querySelector( '.wccl-modal-close' );  // ✅ Fixed
+    const overlay        = modal.querySelector( '.wccl-modal-overlay' ); 
+    const submitButton   = modal.querySelector( '.wccl-submit-btn' );   // ✅ Already good
 
 	let currentProductId = null;
 
