@@ -31,114 +31,68 @@ final class WC_Customer_List_Ajax_Handlers {
 	/**
 	 * AJAX: Get dropdown of user's lists.
 	 */
-	public function get_user_lists(): void {
+	public function getuserlists() {
+    check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
 
-		check_ajax_referer( 'wc_customer_lists_nonce', 'nonce' );
+    $user_id = get_current_user_id();
+    if ( ! $user_id ) {
+        wp_send_json_error( [ 'message' => 'Not logged in.' ] );
+    }
 
-		$user_id = get_current_user_id();
+    $enabled_lists = $this->settings['enabled_lists'] ?? [];
+    if ( empty( $enabled_lists ) ) {
+        wp_send_json_success( [
+            'html' => '<p>No list types enabled.</p>'
+        ] );
+    }
 
-		if ( ! $user_id ) {
-			wp_send_json_error(
-				[ 'message' => __( 'Not logged in.', 'wc-customer-lists' ) ]
-			);
-		}
+    // 🔥 SINGLE QUERY FIX
+    $posts = get_posts( [
+        'author'        => $user_id,
+        'post_type'     => $enabled_lists,  // ← ARRAY!
+        'post_status'   => 'private',
+        'numberposts'   => -1,
+        'orderby'       => 'date',
+        'order'         => 'DESC',
+        'fields'        => 'ids',  // Faster!
+    ] );
 
-		$enabled_lists = $this->settings['enabled_lists'] ?? [];
+    $lists = [];
+    foreach ( $posts as $post_id ) {
+        $post_type = get_post_type( $post_id );
+        $config = WC_Customer_Lists_List_Registry::get_list_config( $post_type );
+        
+        $lists[] = [
+            'id'            => $post_id,
+            'title'         => get_the_title( $post_id ),
+            'post_type'     => $post_type,
+            'supports_events' => ! empty( $config['supports_events'] ),
+        ];
+    }
 
-		if ( empty( $enabled_lists ) ) {
+    if ( empty( $lists ) ) {
+        wp_send_json_success( [
+            'html' => '<p>No lists found. Create one first!</p>'
+        ] );
+    }
 
-			wp_send_json_success(
-				[
-					'html' => '<p>' .
-					esc_html__( 'No list types enabled.', 'wc-customer-lists' ) .
-					'</p>',
-				]
-			);
-
-		}
-
-		$lists = [];
-
-		foreach ( $enabled_lists as $post_type ) {
-
-			if ( ! WC_Customer_Lists_List_Registry::get_list_config( $post_type ) ) {
-				continue;
-			}
-
-			$config = WC_Customer_Lists_List_Registry::$list_types[ $post_type ] ?? [];
-
-			$posts = get_posts(
-				[
-					'author'      => $user_id,
-					'post_type'   => $post_type,
-					'post_status' => 'private',
-					'numberposts' => -1,
-				]
-			);
-
-			foreach ( $posts as $post ) {
-
-				$lists[] = [
-					'id'              => $post->ID,
-					'title'           => get_the_title( $post->ID ),
-					'post_type'       => $post_type,
-					'supports_events' => ! empty( $config['supports_events'] ),
-				];
-
-			}
-		}
-
-		if ( empty( $lists ) ) {
-
-			wp_send_json_success(
-				[
-					'html' =>
-					'<p>' .
-					esc_html__(
-						'No lists found. Create one first!',
-						'wc-customer-lists'
-					) .
-					'</p>',
-				]
-			);
-
-		}
-
-		ob_start();
-		?>
-
-		<label for="wc_list_id">
-			<?php esc_html_e( 'Select a list:', 'wc-customer-lists' ); ?>
-		</label>
-
-		<select name="wc_list_id" id="wc_list_id">
-
-			<?php foreach ( $lists as $list ) : ?>
-
-				<option
-					value="<?php echo esc_attr( $list['id'] ); ?>"
-					data-supports-events="<?php echo esc_attr( $list['supports_events'] ? '1' : '0' ); ?>"
-				>
-
-					<?php echo esc_html( $list['title'] ); ?>
-
-				</option>
-
-			<?php endforeach; ?>
-
-		</select>
-
-		<div id="wc_event_fields_container"></div>
-
-		<?php
-
-		wp_send_json_success(
-			[
-				'html' => ob_get_clean(),
-			]
-		);
-
-	}
+    ob_start();
+    ?>
+    <label for="wclistid"><?php esc_html_e( 'Select a list', 'wc-customer-lists' ); ?></label>
+    <select name="wclistid" id="wclistid">
+        <?php foreach ( $lists as $list ): ?>
+            <option 
+                value="<?php echo esc_attr( $list['id'] ); ?>"
+                data-supports-events="<?php echo esc_attr( $list['supports_events'] ? '1' : '0' ); ?>"
+            >
+                <?php echo esc_html( $list['title'] ); ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <div id="wceventfieldscontainer"></div>
+    <?php
+    wp_send_json_success( [ 'html' => ob_get_clean() ] );
+}
 
 	/**
 	 * AJAX: Add product to list.
