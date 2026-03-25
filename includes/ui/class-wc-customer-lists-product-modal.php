@@ -118,10 +118,26 @@ class WC_Customer_Lists_Product_Modal {
 	 * populated dynamically via AJAX after a button is clicked.
 	 */
 	public function render_modal() {
-		if ( ! is_user_logged_in() ) {
-			return;
-		}
-		?>
+		if ( ! is_user_logged_in() ) return;
+    
+    // 🔥 PRELOAD LISTS CACHE
+    $user_id = get_current_user_id();
+    $cache_key = 'wccl_lists_html_' . $user_id;
+    $cached_html = get_transient( $cache_key );
+    
+    if ( false === $cached_html ) {
+        ob_start();
+        // Same logic as getuserlists() but no nonce
+        $enabled_lists = get_option( 'wc_customer_lists_settings', [] )['enabled_lists'] ?? [];
+        $posts = get_posts( [ /* single query */ ] );
+        // Build <select> HTML...
+        $cached_html = ob_get_clean();
+        set_transient( $cache_key, $cached_html, 5 * MINUTE_IN_SECONDS );
+    }
+    ?>
+    
+    <!-- Cached lists (invisible) -->
+    <div id="wccl-lists-cache" style="display:none;"><?php echo $cached_html; ?></div>
 		<div id="wc-customer-lists-modal" class="wccl-modal" aria-hidden="true">
 			<div class="wccl-modal-overlay"></div>
 			<div class="wccl-modal-container">
